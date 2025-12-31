@@ -18,14 +18,19 @@ export interface IdusProduct {
   discountRate?: number;
   image: string;
   images?: string[];
+  additionalImages?: string[];
   artistName: string;
   artistId?: string;
   artistProfileImage?: string;
+  artistDescription?: string;
   rating: number;
   reviewCount: number;
   url: string;
   description?: string;
   category?: string;
+  subcategory?: string;
+  tags?: string[];
+  shippingInfo?: string;
 }
 
 export interface ProductSearchParams {

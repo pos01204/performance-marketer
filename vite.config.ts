@@ -8,6 +8,35 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
+      proxy: {
+        // idus 웹사이트 프록시 (CORS 우회)
+        '/idus-proxy': {
+          target: 'https://www.idus.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/idus-proxy/, ''),
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept-Language': 'ko-KR,ko;q=0.9',
+          },
+        },
+        // idus API 프록시
+        '/idus-api': {
+          target: 'https://api.idus.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/idus-api/, ''),
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept-Language': 'ko-KR,ko;q=0.9',
+            'Origin': 'https://www.idus.com',
+            'Referer': 'https://www.idus.com/',
+          },
+        },
+        // Vercel API 프록시 (로컬 개발 시)
+        '/api': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
+      },
     },
     plugins: [react()],
     build: {
