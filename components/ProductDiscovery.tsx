@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -9,11 +9,14 @@ import {
   SlidersHorizontal,
   LayoutGrid,
   List,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { ProductCard, ProductCardSkeleton } from './ProductCard';
+import { ProductQuickView } from './ProductQuickView';
 import { useCampaignStore } from '../store/campaignStore';
-import { searchProducts, formatPrice } from '../services/idusService';
+import { searchProductsWithPagination, formatPrice, ITEMS_PER_PAGE } from '../services/idusService';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import { SORT_OPTIONS, MAX_SELECTED_PRODUCTS } from '../constants';
 import type { IdusProduct } from '../types';
 
@@ -39,8 +42,14 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
   const [sortBy, setSortBy] = useState<string>('popular');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [quickViewProduct, setQuickViewProduct] = useState<IdusProduct | null>(null);
+  
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // 검색 실행
+  // 검색 실행 (새 검색)
   const handleSearch = useCallback(async (keyword?: string) => {
     const searchTerm = keyword ?? inputValue;
     if (!searchTerm.trim()) return;
@@ -48,17 +57,52 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
     setSearchKeyword(searchTerm);
     setIsSearching(true);
     setSearchError(null);
+    setCurrentPage(1);
 
     try {
-      const results = await searchProducts({ keyword: searchTerm, sort: sortBy as any });
-      setSearchResults(results);
+      const result = await searchProductsWithPagination({ keyword: searchTerm, sort: sortBy as any, page: 1 });
+      setSearchResults(result.products);
+      setHasMore(result.hasMore);
+      setTotalCount(result.totalCount);
     } catch (error) {
       setSearchError(error instanceof Error ? error.message : '검색 중 오류가 발생했습니다');
       setSearchResults([]);
+      setHasMore(false);
     } finally {
       setIsSearching(false);
     }
   }, [inputValue, sortBy, setSearchKeyword, setIsSearching, setSearchError, setSearchResults]);
+
+  // 더 불러오기 (무한 스크롤)
+  const loadMore = useCallback(async () => {
+    if (!searchKeyword || isLoadingMore || !hasMore) return;
+
+    setIsLoadingMore(true);
+    const nextPage = currentPage + 1;
+
+    try {
+      const result = await searchProductsWithPagination({ 
+        keyword: searchKeyword, 
+        sort: sortBy as any, 
+        page: nextPage 
+      });
+      
+      setSearchResults([...searchResults, ...result.products]);
+      setHasMore(result.hasMore);
+      setCurrentPage(nextPage);
+    } catch (error) {
+      console.error('Load more error:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [searchKeyword, sortBy, currentPage, hasMore, isLoadingMore, searchResults, setSearchResults]);
+
+  // 무한 스크롤 훅
+  const { loadMoreRef } = useInfiniteScroll({
+    onLoadMore: loadMore,
+    hasMore,
+    isLoading: isLoadingMore,
+  });
 
   // 정렬 변경 시 재검색
   useEffect(() => {
@@ -164,7 +208,12 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
             >
               <div className="flex items-center gap-2">
                 <span className="text-sm text-text-secondary">
-                  <span className="font-semibold text-text-primary">{searchResults.length}</span>개 작품
+                  <span className="font-semibold text-text-primary">{totalCount > 0 ? totalCount : searchResults.length}</span>개 작품
+                  {searchResults.length < totalCount && (
+                    <span className="text-text-muted ml-1">
+                      ({searchResults.length}개 표시 중)
+                    </span>
+                  )}
                 </span>
               </div>
               
@@ -294,25 +343,42 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
 
           {/* 검색 결과 */}
           {!isSearching && searchResults.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className={`grid gap-4 ${
-                viewMode === 'grid' 
-                  ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' 
-                  : 'grid-cols-1'
-              }`}
-            >
-              <AnimatePresence mode="popLayout">
-                {searchResults.map((product) => (
-                  <ProductCard 
-                    key={product.id} 
-                    product={product}
-                    onQuickView={setQuickViewProduct}
-                  />
-                ))}
-              </AnimatePresence>
-            </motion.div>
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className={`grid gap-4 ${
+                  viewMode === 'grid' 
+                    ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' 
+                    : 'grid-cols-1'
+                }`}
+              >
+                <AnimatePresence mode="popLayout">
+                  {searchResults.map((product) => (
+                    <ProductCard 
+                      key={product.id} 
+                      product={product}
+                      onQuickView={setQuickViewProduct}
+                    />
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+
+              {/* 무한 스크롤 트리거 */}
+              <div ref={loadMoreRef} className="py-8 flex justify-center">
+                {isLoadingMore && (
+                  <div className="flex items-center gap-3 text-text-muted">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>더 불러오는 중...</span>
+                  </div>
+                )}
+                {!hasMore && searchResults.length > ITEMS_PER_PAGE && (
+                  <div className="text-text-muted text-sm">
+                    모든 검색 결과를 불러왔습니다
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -372,6 +438,13 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Quick View 모달 */}
+      <ProductQuickView
+        product={quickViewProduct}
+        isOpen={!!quickViewProduct}
+        onClose={() => setQuickViewProduct(null)}
+      />
     </div>
   );
 };

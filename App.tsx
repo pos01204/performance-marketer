@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -11,6 +11,7 @@ import { useCampaignStore, useSelectedProductCount, useHistoryCount } from './st
 import { ProductDiscovery } from './components/ProductDiscovery';
 import { ContentStudio } from './components/ContentStudio';
 import { History } from './components/History';
+import { SettingsModal } from './components/SettingsModal';
 import { Toaster } from 'sonner';
 import type { AppTab } from './types';
 
@@ -39,6 +40,7 @@ const App: React.FC = () => {
   const { activeTab, setActiveTab } = useCampaignStore();
   const selectedCount = useSelectedProductCount();
   const historyCount = useHistoryCount();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleTabChange = (tab: AppTab) => {
     setActiveTab(tab);
@@ -126,11 +128,20 @@ const App: React.FC = () => {
             </motion.button>
           )}
           
-          <button className="p-2 text-text-muted hover:text-text-primary hover:bg-surface-overlay rounded-lg transition-colors">
+          <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-2 text-text-muted hover:text-text-primary hover:bg-surface-overlay rounded-lg transition-colors"
+          >
             <Settings className="w-5 h-5" />
           </button>
         </div>
       </header>
+
+      {/* 설정 모달 */}
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+      />
 
       {/* 메인 콘텐츠 */}
       <main className="flex-1 overflow-hidden">

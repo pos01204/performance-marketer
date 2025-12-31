@@ -19,6 +19,7 @@ import { useCampaignStore } from '../store/campaignStore';
 import { generateContent } from '../services/geminiService';
 import { generateCrmCopy } from '../services/crmService';
 import { formatPrice } from '../services/idusService';
+import { SeasonalEventBanner } from './SeasonalEventBanner';
 import {
   PLATFORM_OPTIONS,
   LANGUAGE_OPTIONS,
@@ -518,6 +519,12 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
       {/* 오른쪽: 결과 패널 */}
       <div className="flex-1 overflow-y-auto bg-surface-raised">
         <div className="p-6">
+          {/* 시즌 이벤트 배너 */}
+          <SeasonalEventBanner
+            targetRegion={targetRegions[0] === 'north_america' ? 'north_america' : 'japan'}
+            onEventSelect={(event) => setSeasonalEvent(event.id)}
+          />
+
           {/* 결과 헤더 */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-text-primary">생성된 콘텐츠</h2>

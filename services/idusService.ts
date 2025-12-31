@@ -3,6 +3,9 @@ import type { IdusProduct, ProductSearchParams, ProductSearchResult } from '../t
 // API 엔드포인트 (Vercel/Railway 배포 시 환경에 맞게 설정)
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
+// 페이지당 아이템 수
+export const ITEMS_PER_PAGE = 24;
+
 /**
  * idus 작품 검색
  * 서버사이드 크롤링 API를 호출합니다.
@@ -42,8 +45,8 @@ export async function searchIdusProducts(params: ProductSearchParams): Promise<I
  * 개발용 Mock 데이터
  * API가 아직 없을 때 사용합니다.
  */
-export function getMockProducts(keyword: string): IdusProduct[] {
-  const mockProducts: IdusProduct[] = [
+export function getMockProducts(keyword: string, page: number = 1): { products: IdusProduct[], hasMore: boolean, totalCount: number } {
+  const baseMockProducts: IdusProduct[] = [
     {
       id: 'mock-1',
       title: '손으로 빚은 도자기 컵 - 청화백자',
@@ -114,33 +117,79 @@ export function getMockProducts(keyword: string): IdusProduct[] {
     },
   ];
 
-  // 키워드로 필터링 (간단한 매칭)
-  const searchLower = keyword.toLowerCase();
-  return mockProducts.filter(p => 
-    p.title.toLowerCase().includes(searchLower) ||
-    p.artistName.toLowerCase().includes(searchLower) ||
-    p.category?.toLowerCase().includes(searchLower) ||
-    true // 일단 모든 결과 반환
-  );
+  // 더 많은 Mock 데이터 생성 (무한 스크롤 테스트용)
+  const allProducts: IdusProduct[] = [];
+  const totalPages = 5; // 총 5페이지 분량
+  
+  for (let i = 0; i < totalPages; i++) {
+    baseMockProducts.forEach((product, idx) => {
+      allProducts.push({
+        ...product,
+        id: `mock-${i * baseMockProducts.length + idx + 1}`,
+        title: `${product.title} #${i * baseMockProducts.length + idx + 1}`,
+        price: product.price + (i * 1000),
+        reviewCount: product.reviewCount + (i * 10),
+      });
+    });
+  }
+
+  // 페이지네이션 적용
+  const startIndex = (page - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedProducts = allProducts.slice(startIndex, endIndex);
+  
+  return {
+    products: paginatedProducts,
+    hasMore: endIndex < allProducts.length,
+    totalCount: allProducts.length,
+  };
+}
+
+/**
+ * 작품 검색 결과 타입 (페이지네이션 포함)
+ */
+export interface SearchResultWithPagination {
+  products: IdusProduct[];
+  hasMore: boolean;
+  totalCount: number;
+  page: number;
 }
 
 /**
  * 작품 검색 (Mock 또는 실제 API 사용)
  */
 export async function searchProducts(params: ProductSearchParams): Promise<IdusProduct[]> {
-  const { keyword } = params;
+  const result = await searchProductsWithPagination(params);
+  return result.products;
+}
+
+/**
+ * 작품 검색 (페이지네이션 포함)
+ */
+export async function searchProductsWithPagination(params: ProductSearchParams): Promise<SearchResultWithPagination> {
+  const { keyword, page = 1 } = params;
 
   // 개발 모드에서는 Mock 데이터 사용 (API가 아직 없으면)
   const useMock = import.meta.env.DEV && !import.meta.env.VITE_API_URL;
   
   if (useMock) {
     // Mock 데이터 반환 (약간의 지연 추가)
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return getMockProducts(keyword);
+    await new Promise(resolve => setTimeout(resolve, 600));
+    const result = getMockProducts(keyword, page);
+    return {
+      ...result,
+      page,
+    };
   }
 
   // 실제 API 호출
-  return searchIdusProducts(params);
+  const products = await searchIdusProducts(params);
+  return {
+    products,
+    hasMore: products.length >= ITEMS_PER_PAGE,
+    totalCount: products.length,
+    page,
+  };
 }
 
 /**

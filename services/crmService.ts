@@ -10,7 +10,7 @@ if (!API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: API_KEY || '' });
 
-// CRM 입력 타입
+// 기존 CRM 입력 타입 (레거시 지원)
 interface CrmGenerationInput {
   // 기본
   productUrl?: string;
@@ -29,6 +29,28 @@ interface CrmGenerationInput {
   exhibitionTitle?: string;
   artistUrl?: string;
   artistName?: string;
+}
+
+// 새로운 CRM 입력 타입 (CrmGenerator 컴포넌트용)
+interface NewCrmGenerationInput {
+  trigger: string;
+  region: string;
+  variables: string[];
+  productInfo?: Array<{
+    title: string;
+    price: number;
+    artistName: string;
+    url: string;
+  }> | null;
+  customUrl?: string;
+  additionalInfo?: Record<string, string>;
+  images?: Array<{
+    name: string;
+    base64: string;
+    mimeType: string;
+    url?: string;
+  }>;
+  crmType: string;
 }
 
 /**
@@ -203,9 +225,9 @@ function getCrmResponseSchema() {
 }
 
 /**
- * CRM 카피 생성 메인 함수
+ * CRM 카피 생성 메인 함수 (레거시)
  */
-export async function generateCrmCopy(input: CrmGenerationInput): Promise<CrmContentResult> {
+export async function generateCrmCopyLegacy(input: CrmGenerationInput): Promise<CrmContentResult> {
   const prompt = buildCrmPrompt(input);
   const schema = getCrmResponseSchema();
 
@@ -248,6 +270,129 @@ export async function generateCrmCopy(input: CrmGenerationInput): Promise<CrmCon
     const parsedResponse: CrmContentResult = JSON.parse(jsonText);
     
     return parsedResponse;
+  } catch (error) {
+    console.error("Error calling Gemini API for CRM copy:", error);
+    throw new Error("CRM 카피 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
+  }
+}
+
+/**
+ * 새로운 CRM 카피 생성 함수 (CrmGenerator 컴포넌트용)
+ */
+export async function generateCrmCopy(input: NewCrmGenerationInput): Promise<any> {
+  const { trigger, region, variables, productInfo, customUrl, additionalInfo, images, crmType } = input;
+
+  // 권역 레이블
+  const regionLabel = region === 'north_america' ? '북미 (English)' : '일본 (日本語)';
+  const language = region === 'north_america' ? 'English' : '日本語';
+
+  // 트리거 레이블
+  const triggerOption = CRM_TRIGGER_OPTIONS.find(t => t.id === trigger);
+  const triggerLabel = triggerOption?.label || trigger;
+  const triggerDesc = triggerOption?.description || '';
+
+  // 상품 정보 텍스트
+  let productContext = '';
+  if (productInfo && productInfo.length > 0) {
+    productContext = productInfo.map((p, i) => 
+      `${i + 1}. ${p.title} (${p.price.toLocaleString()}원) - ${p.artistName}`
+    ).join('\n');
+  }
+
+  // CRM 타입별 컨텍스트
+  let typeContext = '';
+  if (crmType === 'exhibition') {
+    typeContext = `기획전 URL: ${customUrl}\n기획전의 테마와 참여 혜택을 강조하세요.`;
+  } else if (crmType === 'artist') {
+    typeContext = `작가 홈 URL: ${customUrl}\n작가의 스토리와 작품 세계관을 강조하세요.`;
+  } else {
+    typeContext = `선택된 작품:\n${productContext}\n작품의 독창성과 한정성을 강조하세요.`;
+  }
+
+  // 변수 토큰
+  const variableTokens = CRM_VARIABLE_OPTIONS.filter(v => variables.includes(v.id)).map(v => v.token);
+
+  // 추가 정보
+  const discountInfo = additionalInfo?.discount || '';
+  const benefitInfo = additionalInfo?.benefit || '';
+
+  const prompt = `
+    당신은 글로벌 이커머스 플랫폼 'idus'의 **Top-tier CRM Growth Hacker**입니다.
+    고객의 심리를 꿰뚫어 클릭하지 않고는 못 배기게 만드는 **'후킹(Hooking)' 메시지**를 작성합니다.
+
+    **[CRM 타입]**
+    ${typeContext}
+
+    **[캠페인 설정]**
+    - 트리거: ${triggerLabel} - ${triggerDesc}
+    - 타겟 권역: ${regionLabel}
+    - 개인화 변수: ${variableTokens.length > 0 ? variableTokens.join(', ') : '없음'}
+    ${discountInfo ? `- 할인/혜택: ${discountInfo}` : ''}
+    ${benefitInfo ? `- 가입 혜택: ${benefitInfo}` : ''}
+
+    **[작성 가이드라인]**
+    1. **Curiosity Gap**: 클릭해야만 알 수 있는 정보의 공백을 만드세요.
+    2. **Loss Aversion**: 놓치는 고통을 자극하세요.
+    3. **Personalization**: 변수를 1:1 대화처럼 자연스럽게 녹이세요.
+
+    **[출력 요구사항]**
+    - 언어: ${language}
+    - 푸시 알림 제목: 15자 이내 (핵심 훅)
+    - 푸시 알림 본문: 35자 이내 (행동 유도)
+    - 인앱 메시지: 50자 이내
+    - 이메일 제목: 30자 이내
+    - 이메일 본문: 100자 이내
+    - 권장 발송 시간: 해당 권역의 최적 시간대
+
+    **Output Format (JSON):**
+    {
+      "pushTitle": "푸시 제목",
+      "pushBody": "푸시 본문",
+      "inAppMessage": "인앱 메시지",
+      "emailSubject": "이메일 제목",
+      "emailBody": "이메일 본문",
+      "recommendedTime": "권장 발송 시간 (예: 오전 10시-12시)"
+    }
+  `;
+
+  // 이미지 파트 준비
+  const imageParts = (images || [])
+    .filter(img => img.base64)
+    .map(image => ({
+      inlineData: {
+        data: image.base64,
+        mimeType: image.mimeType,
+      },
+    }));
+
+  const textPart = { text: prompt };
+  const parts = imageParts.length > 0 ? [textPart, ...imageParts] : [textPart];
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: { parts: parts },
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.8,
+      }
+    });
+
+    let jsonText = response.text.trim();
+
+    // JSON 파싱
+    const codeBlockMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (codeBlockMatch) {
+      jsonText = codeBlockMatch[1];
+    } else {
+      const firstBrace = jsonText.indexOf('{');
+      const lastBrace = jsonText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonText = jsonText.substring(firstBrace, lastBrace + 1);
+      }
+    }
+
+    return JSON.parse(jsonText);
   } catch (error) {
     console.error("Error calling Gemini API for CRM copy:", error);
     throw new Error("CRM 카피 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
