@@ -141,13 +141,13 @@ export const History: React.FC = () => {
   if (history.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-8">
-        <div className="w-24 h-24 rounded-full bg-surface-card border border-border flex items-center justify-center mb-6">
-          <HistoryIcon className="w-10 h-10 text-text-muted" />
+        <div className="w-24 h-24 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-6 shadow-soft">
+          <HistoryIcon className="w-10 h-10 text-gray-400" />
         </div>
-        <h3 className="text-xl font-semibold text-text-primary mb-2">
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
           생성 기록이 없습니다
         </h3>
-        <p className="text-text-secondary max-w-md">
+        <p className="text-gray-500 max-w-md">
           콘텐츠를 생성하면 이곳에 기록이 저장됩니다.<br />
           작품 탐색에서 콘텐츠 생성을 시작해보세요.
         </p>
@@ -158,21 +158,21 @@ export const History: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       {/* 헤더 */}
-      <div className="flex-shrink-0 px-8 py-6 border-b border-border bg-surface/50 backdrop-blur-sm">
+      <div className="flex-shrink-0 px-8 py-6 border-b border-gray-200 bg-white/50 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                 <HistoryIcon className="w-6 h-6 text-brand-orange" />
                 히스토리
               </h1>
-              <p className="text-sm text-text-secondary mt-1">
+              <p className="text-sm text-gray-500 mt-1">
                 총 {history.length}개 중 {filteredHistory.length}개 표시
               </p>
             </div>
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             >
               <Trash2 className="w-4 h-4" />
               전체 삭제
@@ -183,18 +183,18 @@ export const History: React.FC = () => {
           <div className="flex flex-wrap gap-3">
             {/* 검색 입력 */}
             <div className="flex-1 min-w-[200px] relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="작품명, 작가명으로 검색..."
-                className="w-full bg-surface-card border border-border rounded-lg pl-9 pr-8 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-orange"
+                className="w-full bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-orange shadow-soft"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -202,7 +202,7 @@ export const History: React.FC = () => {
             </div>
 
             {/* 타입 필터 */}
-            <div className="flex items-center gap-1 bg-surface-card rounded-lg border border-border p-1">
+            <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1 shadow-soft">
               {[
                 { id: 'all', label: '전체' },
                 { id: 'social', label: '소셜' },
@@ -215,7 +215,7 @@ export const History: React.FC = () => {
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                     filterType === opt.id
                       ? 'bg-brand-orange text-white'
-                      : 'text-text-secondary hover:text-text-primary'
+                      : 'text-gray-500 hover:text-gray-900'
                   }`}
                 >
                   {opt.label}
@@ -224,7 +224,7 @@ export const History: React.FC = () => {
             </div>
 
             {/* 기간 필터 */}
-            <div className="flex items-center gap-1 bg-surface-card rounded-lg border border-border p-1">
+            <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1 shadow-soft">
               {[
                 { id: 'all', label: '전체 기간' },
                 { id: 'today', label: '오늘' },
@@ -237,7 +237,7 @@ export const History: React.FC = () => {
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                     filterPeriod === opt.id
                       ? 'bg-brand-orange text-white'
-                      : 'text-text-secondary hover:text-text-primary'
+                      : 'text-gray-500 hover:text-gray-900'
                   }`}
                 >
                   {opt.label}
@@ -254,13 +254,13 @@ export const History: React.FC = () => {
           {/* 검색 결과 없음 */}
           {filteredHistory.length === 0 && history.length > 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-16 h-16 rounded-full bg-surface-card border border-border flex items-center justify-center mb-4">
-                <Filter className="w-8 h-8 text-text-muted" />
+              <div className="w-16 h-16 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-4 shadow-soft">
+                <Filter className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-text-primary mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 검색 결과가 없습니다
               </h3>
-              <p className="text-text-secondary text-sm mb-4">
+              <p className="text-gray-500 text-sm mb-4">
                 다른 검색어나 필터를 시도해보세요
               </p>
               <button
@@ -284,11 +284,11 @@ export const History: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-surface-card rounded-xl border border-border overflow-hidden"
+                className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-soft"
               >
                 {/* 기록 헤더 */}
                 <div 
-                  className="p-4 cursor-pointer hover:bg-surface-overlay/50 transition-colors"
+                  className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                   onClick={() => toggleExpand(item.id)}
                 >
                   <div className="flex items-center justify-between">
@@ -300,35 +300,35 @@ export const History: React.FC = () => {
                             key={p.id}
                             src={p.image}
                             alt={p.title}
-                            className="w-10 h-10 rounded-lg border-2 border-surface-card object-cover"
+                            className="w-10 h-10 rounded-lg border-2 border-white object-cover"
                             style={{ zIndex: 3 - i }}
                           />
                         ))}
                         {item.products.length > 3 && (
-                          <div className="w-10 h-10 rounded-lg bg-surface-overlay flex items-center justify-center text-xs text-text-muted border-2 border-surface-card">
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-500 border-2 border-white">
                             +{item.products.length - 3}
                           </div>
                         )}
                       </div>
                       
                       <div>
-                        <p className="font-medium text-text-primary line-clamp-1">
+                        <p className="font-medium text-gray-900 line-clamp-1">
                           {item.products[0]?.title}
                           {item.products.length > 1 && ` 외 ${item.products.length - 1}개`}
                         </p>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-text-muted">
+                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {format(new Date(item.createdAt), 'MM/dd HH:mm', { locale: ko })}
                           </span>
                           {item.socialResult && (
-                            <span className="flex items-center gap-1 text-pink-400">
+                            <span className="flex items-center gap-1 text-pink-500">
                               <Instagram className="w-3 h-3" />
                               소셜
                             </span>
                           )}
                           {item.crmResult && (
-                            <span className="flex items-center gap-1 text-blue-400">
+                            <span className="flex items-center gap-1 text-blue-500">
                               <MessageSquare className="w-3 h-3" />
                               CRM
                             </span>
@@ -343,7 +343,7 @@ export const History: React.FC = () => {
                           e.stopPropagation();
                           exportAsMarkdown(item);
                         }}
-                        className="p-2 text-text-muted hover:text-text-primary hover:bg-surface-overlay rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                         title="마크다운으로 내보내기"
                       >
                         <Download className="w-4 h-4" />
@@ -353,15 +353,15 @@ export const History: React.FC = () => {
                           e.stopPropagation();
                           removeFromHistory(item.id);
                         }}
-                        className="p-2 text-text-muted hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                         title="삭제"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                       {expandedId === item.id ? (
-                        <ChevronUp className="w-5 h-5 text-text-muted" />
+                        <ChevronUp className="w-5 h-5 text-gray-400" />
                       ) : (
-                        <ChevronDown className="w-5 h-5 text-text-muted" />
+                        <ChevronDown className="w-5 h-5 text-gray-400" />
                       )}
                     </div>
                   </div>
@@ -376,18 +376,18 @@ export const History: React.FC = () => {
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="border-t border-border p-4 space-y-6">
+                      <div className="border-t border-gray-200 p-4 space-y-6">
                         {/* 소셜 콘텐츠 */}
                         {item.socialResult && (
                           <div>
-                            <h4 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                               <Instagram className="w-4 h-4 text-pink-500" />
                               소셜 콘텐츠
                             </h4>
                             <div className="space-y-3">
                               {Object.entries(item.socialResult.marketingContent || {}).map(([lang, platforms]) => (
                                 <div key={lang} className="space-y-2">
-                                  <span className="text-xs text-text-muted uppercase tracking-wider">
+                                  <span className="text-xs text-gray-500 uppercase tracking-wider">
                                     {LANGUAGE_OPTIONS.find(l => l.id === lang)?.flag} {LANGUAGE_OPTIONS.find(l => l.id === lang)?.label}
                                   </span>
                                   {Object.entries(platforms || {}).map(([platform, content]: [string, any]) => {
@@ -397,7 +397,7 @@ export const History: React.FC = () => {
                                     return (
                                       <div 
                                         key={platform}
-                                        className="bg-surface-overlay rounded-lg p-3"
+                                        className="bg-gray-50 rounded-lg p-3 border border-gray-100"
                                       >
                                         <div className="flex items-center justify-between mb-2">
                                           <div className="flex items-center gap-1.5">
@@ -406,13 +406,13 @@ export const History: React.FC = () => {
                                             ) : (
                                               <Twitter className="w-3.5 h-3.5 text-blue-400" />
                                             )}
-                                            <span className="text-xs font-medium text-text-secondary">
+                                            <span className="text-xs font-medium text-gray-600">
                                               {platform.toUpperCase()}
                                             </span>
                                           </div>
                                           <button
                                             onClick={() => handleCopy(fullText, copyId)}
-                                            className="text-text-muted hover:text-text-primary transition-colors"
+                                            className="text-gray-400 hover:text-gray-900 transition-colors"
                                           >
                                             {copiedId === copyId ? (
                                               <Check className="w-4 h-4 text-green-500" />
@@ -421,10 +421,10 @@ export const History: React.FC = () => {
                                             )}
                                           </button>
                                         </div>
-                                        <p className="text-sm text-text-primary whitespace-pre-wrap line-clamp-3">
+                                        <p className="text-sm text-gray-900 whitespace-pre-wrap line-clamp-3">
                                           {content.caption}
                                         </p>
-                                        <p className="text-xs text-blue-400 mt-2 line-clamp-2">
+                                        <p className="text-xs text-blue-500 mt-2 line-clamp-2">
                                           {content.hashtags.slice(0, 5).map((h: string) => h.startsWith('#') ? h : `#${h}`).join(' ')}
                                           {content.hashtags.length > 5 && ` +${content.hashtags.length - 5}`}
                                         </p>
@@ -440,7 +440,7 @@ export const History: React.FC = () => {
                         {/* CRM */}
                         {item.crmResult && (
                           <div>
-                            <h4 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                               <MessageSquare className="w-4 h-4 text-blue-500" />
                               CRM 카피
                             </h4>
@@ -454,20 +454,20 @@ export const History: React.FC = () => {
                                     return (
                                       <div 
                                         key={copyId}
-                                        className="bg-surface-overlay rounded-lg p-3"
+                                        className="bg-gray-50 rounded-lg p-3 border border-gray-100"
                                       >
                                         <div className="flex items-center justify-between mb-2">
                                           <div className="flex items-center gap-2">
                                             <span className="text-xs">
                                               {LANGUAGE_OPTIONS.find(l => l.id === lang)?.flag}
                                             </span>
-                                            <span className="text-xs font-medium text-text-secondary">
+                                            <span className="text-xs font-medium text-gray-600">
                                               {i === 0 ? 'A안' : 'B안'}
                                             </span>
                                           </div>
                                           <button
                                             onClick={() => handleCopy(fullText, copyId)}
-                                            className="text-text-muted hover:text-text-primary transition-colors"
+                                            className="text-gray-400 hover:text-gray-900 transition-colors"
                                           >
                                             {copiedId === copyId ? (
                                               <Check className="w-4 h-4 text-green-500" />
@@ -476,10 +476,10 @@ export const History: React.FC = () => {
                                             )}
                                           </button>
                                         </div>
-                                        <p className="text-sm font-medium text-text-primary line-clamp-1">
+                                        <p className="text-sm font-medium text-gray-900 line-clamp-1">
                                           {copy.mainCopy}
                                         </p>
-                                        <p className="text-xs text-text-secondary mt-1 line-clamp-1">
+                                        <p className="text-xs text-gray-600 mt-1 line-clamp-1">
                                           {copy.subCopy}
                                         </p>
                                       </div>
@@ -507,32 +507,32 @@ export const History: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
             onClick={() => setShowDeleteConfirm(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-surface-card rounded-2xl border border-border p-6 max-w-md w-full mx-4"
+              className="bg-white rounded-2xl border border-gray-200 p-6 max-w-md w-full mx-4 shadow-medium"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
                   <AlertCircle className="w-6 h-6 text-red-500" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-text-primary">전체 삭제</h3>
-                  <p className="text-sm text-text-secondary">모든 기록이 영구 삭제됩니다</p>
+                  <h3 className="text-lg font-semibold text-gray-900">전체 삭제</h3>
+                  <p className="text-sm text-gray-500">모든 기록이 영구 삭제됩니다</p>
                 </div>
               </div>
-              <p className="text-text-secondary mb-6">
+              <p className="text-gray-600 mb-6">
                 {history.length}개의 생성 기록이 모두 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 py-2.5 bg-surface-overlay text-text-primary rounded-lg hover:bg-surface-overlay/80 transition-colors"
+                  className="flex-1 py-2.5 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   취소
                 </button>

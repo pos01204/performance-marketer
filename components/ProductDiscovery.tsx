@@ -129,7 +129,7 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
   return (
     <div className="flex flex-col h-full">
       {/* 헤더 */}
-      <div className="flex-shrink-0 px-8 py-6 border-b border-border bg-surface/50 backdrop-blur-sm">
+      <div className="flex-shrink-0 px-8 py-6 border-b border-border bg-white/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -174,7 +174,7 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="검색어를 입력하세요 (예: 가죽 지갑, 도자기, 캔들)"
-                className="w-full bg-surface-card border border-border rounded-xl px-12 py-3.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all"
+                className="w-full bg-white border border-gray-200 rounded-xl px-12 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 transition-all shadow-soft"
               />
               {inputValue && (
                 <button
@@ -219,7 +219,7 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
               
               <div className="flex items-center gap-3">
                 {/* 정렬 옵션 */}
-                <div className="flex items-center gap-2 bg-surface-card rounded-lg border border-border p-1">
+                <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1 shadow-soft">
                   {SORT_OPTIONS.map((option) => (
                     <button
                       key={option.id}
@@ -227,7 +227,7 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
                       className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                         sortBy === option.id
                           ? 'bg-brand-orange text-white'
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-overlay'
+                          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                       }`}
                     >
                       {option.label}
@@ -236,11 +236,11 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
                 </div>
 
                 {/* 뷰 모드 */}
-                <div className="flex items-center gap-1 bg-surface-card rounded-lg border border-border p-1">
+                <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1 shadow-soft">
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`p-2 rounded-md transition-colors ${
-                      viewMode === 'grid' ? 'bg-surface-overlay text-text-primary' : 'text-text-muted'
+                      viewMode === 'grid' ? 'bg-gray-100 text-gray-900' : 'text-gray-400'
                     }`}
                   >
                     <LayoutGrid className="w-4 h-4" />
@@ -248,7 +248,7 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
                   <button
                     onClick={() => setViewMode('list')}
                     className={`p-2 rounded-md transition-colors ${
-                      viewMode === 'list' ? 'bg-surface-overlay text-text-primary' : 'text-text-muted'
+                      viewMode === 'list' ? 'bg-gray-100 text-gray-900' : 'text-gray-400'
                     }`}
                   >
                     <List className="w-4 h-4" />
@@ -267,13 +267,13 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
           {/* 초기 상태 */}
           {!searchKeyword && searchResults.length === 0 && !isSearching && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-24 h-24 rounded-full bg-surface-card border border-border flex items-center justify-center mb-6">
-                <Search className="w-10 h-10 text-text-muted" />
+              <div className="w-24 h-24 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-6 shadow-soft">
+                <Search className="w-10 h-10 text-gray-400" />
               </div>
-              <h3 className="text-xl font-semibold text-text-primary mb-2">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 작품을 검색해보세요
               </h3>
-              <p className="text-text-secondary mb-8 max-w-md">
+              <p className="text-gray-500 mb-8 max-w-md">
                 키워드를 입력하면 아이디어스의 작품을 검색할 수 있습니다.<br />
                 원하는 작품을 선택하여 콘텐츠를 생성해보세요.
               </p>
@@ -285,7 +285,7 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
                       setInputValue(keyword);
                       handleSearch(keyword);
                     }}
-                    className="px-4 py-2 bg-surface-card border border-border rounded-full text-sm text-text-secondary hover:text-text-primary hover:border-brand-orange transition-all"
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-600 hover:text-gray-900 hover:border-brand-orange transition-all shadow-soft"
                   >
                     {keyword}
                   </button>
@@ -310,16 +310,16 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
           {/* 에러 상태 */}
           {searchError && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-24 h-24 rounded-full bg-red-500/10 flex items-center justify-center mb-6">
+              <div className="w-24 h-24 rounded-full bg-red-50 flex items-center justify-center mb-6">
                 <X className="w-10 h-10 text-red-500" />
               </div>
-              <h3 className="text-xl font-semibold text-text-primary mb-2">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 검색 중 오류가 발생했습니다
               </h3>
-              <p className="text-text-secondary mb-6">{searchError}</p>
+              <p className="text-gray-500 mb-6">{searchError}</p>
               <button
                 onClick={() => handleSearch()}
-                className="px-6 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange-light transition-colors"
+                className="px-6 py-2 bg-brand-orange text-white rounded-lg hover:bg-brand-orange-light transition-colors shadow-brand"
               >
                 다시 시도
               </button>
@@ -329,13 +329,13 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
           {/* 검색 결과 없음 */}
           {!isSearching && searchKeyword && searchResults.length === 0 && !searchError && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-24 h-24 rounded-full bg-surface-card border border-border flex items-center justify-center mb-6">
-                <Package className="w-10 h-10 text-text-muted" />
+              <div className="w-24 h-24 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-6 shadow-soft">
+                <Package className="w-10 h-10 text-gray-400" />
               </div>
-              <h3 className="text-xl font-semibold text-text-primary mb-2">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 '{searchKeyword}' 검색 결과가 없습니다
               </h3>
-              <p className="text-text-secondary mb-6">
+              <p className="text-gray-500 mb-6">
                 다른 키워드로 검색해보세요
               </p>
             </div>
@@ -390,32 +390,32 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="flex-shrink-0 border-t border-border bg-surface-card/95 backdrop-blur-md px-8 py-4"
+            className="flex-shrink-0 border-t border-gray-200 bg-white/95 backdrop-blur-md px-8 py-4 shadow-medium"
           >
             <div className="max-w-7xl mx-auto">
               <div className="flex items-center justify-between gap-4">
                 {/* 선택된 작품 미리보기 */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-sm text-text-secondary flex-shrink-0">
+                  <span className="text-sm text-gray-500 flex-shrink-0">
                     선택된 작품
                   </span>
                   <div className="flex items-center gap-2 overflow-x-auto py-1">
                     {selectedProducts.map((product) => (
                       <div
                         key={product.id}
-                        className="flex items-center gap-2 bg-surface-overlay rounded-lg px-3 py-1.5 flex-shrink-0"
+                        className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1.5 flex-shrink-0"
                       >
                         <img
                           src={product.image}
                           alt={product.title}
                           className="w-8 h-8 rounded object-cover"
                         />
-                        <span className="text-sm text-text-primary max-w-[120px] truncate">
+                        <span className="text-sm text-gray-900 max-w-[120px] truncate">
                           {product.title}
                         </span>
                         <button
                           onClick={() => useCampaignStore.getState().removeProduct(product.id)}
-                          className="text-text-muted hover:text-red-400 transition-colors"
+                          className="text-gray-400 hover:text-red-500 transition-colors"
                         >
                           <X className="w-4 h-4" />
                         </button>

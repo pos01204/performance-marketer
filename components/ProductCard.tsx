@@ -41,16 +41,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onQuickView }
       transition={{ duration: 0.2 }}
       onClick={handleCardClick}
       className={`
-        group relative bg-surface-card rounded-xl overflow-hidden cursor-pointer
-        border transition-all duration-200
+        group relative bg-white rounded-xl overflow-hidden cursor-pointer
+        border transition-all duration-200 shadow-soft
         ${isSelected 
           ? 'border-brand-orange ring-2 ring-brand-orange/30 shadow-lg shadow-brand-orange/10' 
-          : 'border-border hover:border-border-hover hover:shadow-xl'
+          : 'border-gray-200 hover:border-gray-300 hover:shadow-medium'
         }
       `}
     >
       {/* 이미지 영역 */}
-      <div className="relative aspect-square overflow-hidden bg-surface">
+      <div className="relative aspect-square overflow-hidden bg-gray-100">
         <img
           src={product.image}
           alt={product.title}
@@ -127,13 +127,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onQuickView }
       {/* 정보 영역 */}
       <div className="p-4 space-y-2">
         {/* 작품명 */}
-        <h3 className="text-sm font-medium text-text-primary line-clamp-2 leading-snug min-h-[2.5rem]">
+        <h3 className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug min-h-[2.5rem]">
           {product.title}
         </h3>
 
         {/* 작가명 */}
-        <p className="text-xs text-text-muted flex items-center gap-1">
-          <span className="w-4 h-4 rounded-full bg-surface-overlay flex items-center justify-center text-[10px]">
+        <p className="text-xs text-gray-500 flex items-center gap-1">
+          <span className="w-4 h-4 rounded-full bg-gray-100 flex items-center justify-center text-[10px]">
             👤
           </span>
           {product.artistName}
@@ -145,17 +145,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onQuickView }
             {formatPrice(product.price)}
           </span>
           {product.originalPrice && product.originalPrice > product.price && (
-            <span className="text-xs text-text-disabled line-through">
+            <span className="text-xs text-gray-400 line-through">
               {formatPrice(product.originalPrice)}
             </span>
           )}
         </div>
 
         {/* 평점 */}
-        <div className="flex items-center gap-1 text-xs text-text-secondary">
+        <div className="flex items-center gap-1 text-xs text-gray-600">
           <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
           <span className="font-medium">{product.rating.toFixed(1)}</span>
-          <span className="text-text-muted">({product.reviewCount.toLocaleString()})</span>
+          <span className="text-gray-400">({product.reviewCount.toLocaleString()})</span>
         </div>
       </div>
 
@@ -171,13 +171,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onQuickView }
 
 // 스켈레톤 로딩 카드
 export const ProductCardSkeleton: React.FC = () => (
-  <div className="bg-surface-card rounded-xl overflow-hidden border border-border animate-pulse">
-    <div className="aspect-square bg-surface-overlay" />
+  <div className="bg-white rounded-xl overflow-hidden border border-gray-200 animate-pulse shadow-soft">
+    <div className="aspect-square skeleton" />
     <div className="p-4 space-y-3">
-      <div className="h-4 bg-surface-overlay rounded w-3/4" />
-      <div className="h-3 bg-surface-overlay rounded w-1/2" />
-      <div className="h-5 bg-surface-overlay rounded w-1/3" />
-      <div className="h-3 bg-surface-overlay rounded w-1/4" />
+      <div className="h-4 skeleton rounded w-3/4" />
+      <div className="h-3 skeleton rounded w-1/2" />
+      <div className="h-5 skeleton rounded w-1/3" />
+      <div className="h-3 skeleton rounded w-1/4" />
     </div>
   </div>
 );

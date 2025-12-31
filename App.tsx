@@ -55,7 +55,7 @@ const App: React.FC = () => {
   return (
     <div className="h-screen w-screen flex flex-col bg-surface font-suite overflow-hidden">
       {/* 헤더 네비게이션 */}
-      <header className="flex-shrink-0 h-16 border-b border-border bg-surface-card/80 backdrop-blur-md px-6 flex items-center justify-between z-30">
+      <header className="flex-shrink-0 h-16 border-b border-border bg-white/80 backdrop-blur-md px-6 flex items-center justify-between z-30 shadow-soft">
         {/* 로고 */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-orange to-brand-orange-light flex items-center justify-center">
@@ -189,13 +189,14 @@ const App: React.FC = () => {
 
       {/* Toast 알림 */}
       <Toaster 
-        theme="dark"
+        theme="light"
         position="bottom-right"
         toastOptions={{
           style: {
-            background: '#1F2937',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            color: '#fff',
+            background: '#FFFFFF',
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            color: '#111827',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
           },
         }}
       />

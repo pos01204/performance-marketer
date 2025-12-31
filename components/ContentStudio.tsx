@@ -216,11 +216,11 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
   return (
     <div className="flex h-full">
       {/* 왼쪽: 설정 패널 */}
-      <div className="w-[420px] flex-shrink-0 border-r border-border bg-surface overflow-y-auto">
+      <div className="w-[420px] flex-shrink-0 border-r border-gray-200 bg-white overflow-y-auto">
         <div className="p-6 space-y-6">
           {/* 선택된 작품 */}
-          <div className="bg-surface-card rounded-xl border border-border p-4">
-            <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
+          <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-brand-orange/20 flex items-center justify-center text-brand-orange text-xs font-bold">
                 {selectedProducts.length}
               </span>
@@ -230,7 +230,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
               {selectedProducts.map((product) => (
                 <div 
                   key={product.id}
-                  className="flex items-center gap-3 p-2 bg-surface-overlay rounded-lg"
+                  className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100"
                 >
                   <img 
                     src={product.image} 
@@ -238,7 +238,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                     className="w-12 h-12 rounded-lg object-cover"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-text-primary truncate">{product.title}</p>
+                    <p className="text-sm text-gray-900 truncate">{product.title}</p>
                     <p className="text-xs text-brand-orange">{formatPrice(product.price)}</p>
                   </div>
                 </div>
@@ -246,7 +246,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
             </div>
             <button
               onClick={onNavigateBack}
-              className="mt-3 text-sm text-text-muted hover:text-brand-orange transition-colors flex items-center gap-1"
+              className="mt-3 text-sm text-gray-500 hover:text-brand-orange transition-colors flex items-center gap-1"
             >
               <ArrowLeft className="w-4 h-4" />
               작품 변경
@@ -255,14 +255,14 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
 
           {/* 소셜 콘텐츠 설정 */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <Instagram className="w-4 h-4 text-pink-500" />
               소셜 콘텐츠 설정
             </h3>
 
             {/* 플랫폼 */}
             <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider font-medium mb-2 block">
+              <label className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2 block">
                 플랫폼
               </label>
               <div className="flex gap-2">
@@ -273,7 +273,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                     className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium border transition-all ${
                       platforms.includes(opt.id as Platform)
                         ? 'bg-brand-orange text-white border-brand-orange'
-                        : 'bg-surface-card text-text-secondary border-border hover:border-brand-orange'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-brand-orange'
                     }`}
                   >
                     {opt.id === 'meta' ? '📸' : '🐦'} {opt.id === 'meta' ? 'Meta' : 'X'}
@@ -284,7 +284,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
 
             {/* 언어 */}
             <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider font-medium mb-2 block">
+              <label className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2 block">
                 언어
               </label>
               <div className="flex gap-2">
@@ -295,7 +295,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                     className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium border transition-all ${
                       languages.includes(opt.id as Language)
                         ? 'bg-brand-orange text-white border-brand-orange'
-                        : 'bg-surface-card text-text-secondary border-border hover:border-brand-orange'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-brand-orange'
                     }`}
                   >
                     {opt.flag} {opt.label}
@@ -306,7 +306,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
 
             {/* 포맷 */}
             <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider font-medium mb-2 block">
+              <label className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2 block">
                 콘텐츠 포맷
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -317,7 +317,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                     className={`py-3 px-2 rounded-lg text-sm border transition-all text-center ${
                       format === opt.id
                         ? 'bg-brand-orange text-white border-brand-orange'
-                        : 'bg-surface-card text-text-secondary border-border hover:border-brand-orange'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-brand-orange'
                     }`}
                   >
                     <span className="text-lg block mb-1">{opt.icon}</span>
@@ -329,13 +329,13 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
 
             {/* 톤앤매너 */}
             <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider font-medium mb-2 block">
+              <label className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2 block">
                 톤앤매너
               </label>
               <select
                 value={tone}
                 onChange={(e) => setTone(e.target.value)}
-                className="w-full bg-surface-card border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand-orange"
+                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-brand-orange"
               >
                 {TONE_OPTIONS.map((opt) => (
                   <option key={opt.id} value={opt.id}>
@@ -347,7 +347,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
 
             {/* 시즌 이벤트 */}
             <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider font-medium mb-2 block">
+              <label className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2 block">
                 시즌 이벤트 (선택)
               </label>
               <div className="flex flex-wrap gap-2">
@@ -356,7 +356,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                     !seasonalEvent
                       ? 'bg-brand-orange text-white border-brand-orange'
-                      : 'bg-surface-card text-text-secondary border-border'
+                      : 'bg-white text-gray-600 border-gray-200'
                   }`}
                 >
                   없음
@@ -368,7 +368,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                       seasonalEvent === event.id
                         ? 'bg-brand-orange text-white border-brand-orange'
-                        : 'bg-surface-card text-text-secondary border-border'
+                        : 'bg-white text-gray-600 border-gray-200'
                     }`}
                   >
                     {event.emoji} {event.label}
@@ -379,11 +379,11 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
           </div>
 
           {/* 구분선 */}
-          <div className="border-t border-border" />
+          <div className="border-t border-gray-200" />
 
           {/* CRM 설정 */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-blue-500" />
               CRM 카피 설정
             </h3>
@@ -397,35 +397,35 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                   className={`w-full p-3 rounded-lg border text-left transition-all ${
                     crmType === opt.id
                       ? 'bg-brand-orange/10 border-brand-orange'
-                      : 'bg-surface-card border-border hover:border-brand-orange/50'
+                      : 'bg-white border-gray-200 hover:border-brand-orange/50'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-sm font-medium ${
-                      crmType === opt.id ? 'text-brand-orange' : 'text-text-primary'
+                      crmType === opt.id ? 'text-brand-orange' : 'text-gray-900'
                     }`}>
                       {opt.label}
                     </span>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      opt.badge === '기본' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                      opt.badge === '기본' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
                     }`}>
                       {opt.badge}
                     </span>
                   </div>
-                  <p className="text-xs text-text-muted">{opt.description}</p>
+                  <p className="text-xs text-gray-500">{opt.description}</p>
                 </button>
               ))}
             </div>
 
             {/* 트리거 이벤트 */}
             <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider font-medium mb-2 block">
+              <label className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2 block">
                 트리거 이벤트
               </label>
               <select
                 value={crmTrigger}
                 onChange={(e) => setCrmTrigger(e.target.value as CrmTrigger)}
-                className="w-full bg-surface-card border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand-orange"
+                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-brand-orange"
               >
                 {CRM_TRIGGER_OPTIONS.map((opt) => (
                   <option key={opt.id} value={opt.id}>
@@ -437,7 +437,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
 
             {/* 타겟 권역 */}
             <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider font-medium mb-2 block">
+              <label className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2 block">
                 타겟 권역
               </label>
               <div className="flex gap-2">
@@ -448,7 +448,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                     className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium border transition-all ${
                       targetRegions.includes(opt.id as TargetRegion)
                         ? 'bg-brand-orange text-white border-brand-orange'
-                        : 'bg-surface-card text-text-secondary border-border hover:border-brand-orange'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-brand-orange'
                     }`}
                   >
                     {opt.flag} {opt.label}
@@ -459,7 +459,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
 
             {/* 개인화 변수 */}
             <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider font-medium mb-2 block">
+              <label className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2 block">
                 개인화 변수
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -470,7 +470,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                     className={`py-2 px-3 rounded-lg text-xs font-medium border transition-all text-left ${
                       crmVariables.includes(opt.id)
                         ? 'bg-brand-orange text-white border-brand-orange'
-                        : 'bg-surface-card text-text-secondary border-border hover:border-brand-orange'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-brand-orange'
                     }`}
                   >
                     {opt.label}
@@ -482,7 +482,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
 
             {/* 추가 혜택 */}
             <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider font-medium mb-2 block">
+              <label className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2 block">
                 추가 혜택 정보 (선택)
               </label>
               <input
@@ -490,7 +490,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                 value={additionalBenefit}
                 onChange={(e) => setAdditionalBenefit(e.target.value)}
                 placeholder="예: 3,000원 쿠폰, 무료배송"
-                className="w-full bg-surface-card border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-orange"
+                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-orange"
               />
             </div>
 
@@ -585,7 +585,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
       </div>
 
       {/* 오른쪽: 결과 패널 */}
-      <div className="flex-1 overflow-y-auto bg-surface-raised">
+      <div className="flex-1 overflow-y-auto bg-gray-50">
         <div className="p-6">
           {/* 시즌 이벤트 배너 */}
           <SeasonalEventBanner
@@ -595,15 +595,15 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
 
           {/* 결과 헤더 */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-text-primary">생성된 콘텐츠</h2>
+            <h2 className="text-lg font-semibold text-gray-900">생성된 콘텐츠</h2>
             {(socialResult || crmResult) && (
-              <div className="flex items-center gap-2 bg-surface-card rounded-lg border border-border p-1">
+              <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1 shadow-soft">
                 <button
                   onClick={() => setActiveResultTab('social')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                     activeResultTab === 'social'
                       ? 'bg-brand-orange text-white'
-                      : 'text-text-secondary hover:text-text-primary'
+                      : 'text-gray-500 hover:text-gray-900'
                   }`}
                 >
                   📱 소셜 콘텐츠
@@ -613,7 +613,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                     activeResultTab === 'crm'
                       ? 'bg-brand-orange text-white'
-                      : 'text-text-secondary hover:text-text-primary'
+                      : 'text-gray-500 hover:text-gray-900'
                   }`}
                 >
                   💬 CRM 카피
@@ -624,8 +624,8 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
 
           {/* 에러 메시지 */}
           {generationError && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6">
-              <p className="text-red-400 text-sm">{generationError}</p>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <p className="text-red-600 text-sm">{generationError}</p>
             </div>
           )}
 
@@ -633,24 +633,24 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
           {isGenerating && (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="relative">
-                <div className="w-20 h-20 border-4 border-surface-overlay rounded-full" />
+                <div className="w-20 h-20 border-4 border-gray-200 rounded-full" />
                 <div className="absolute top-0 left-0 w-20 h-20 border-4 border-brand-orange rounded-full border-t-transparent animate-spin" />
               </div>
-              <p className="mt-6 text-text-secondary">AI가 콘텐츠를 생성하고 있습니다...</p>
-              <p className="text-sm text-text-muted mt-2">약 10-20초 소요됩니다</p>
+              <p className="mt-6 text-gray-600">AI가 콘텐츠를 생성하고 있습니다...</p>
+              <p className="text-sm text-gray-400 mt-2">약 10-20초 소요됩니다</p>
             </div>
           )}
 
           {/* 빈 상태 */}
           {!isGenerating && !socialResult && !crmResult && !generationError && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-24 h-24 rounded-full bg-surface-card border border-border flex items-center justify-center mb-6">
-                <Sparkles className="w-10 h-10 text-text-muted" />
+              <div className="w-24 h-24 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-6 shadow-soft">
+                <Sparkles className="w-10 h-10 text-gray-400" />
               </div>
-              <h3 className="text-xl font-semibold text-text-primary mb-2">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 콘텐츠를 생성해보세요
               </h3>
-              <p className="text-text-secondary max-w-md">
+              <p className="text-gray-500 max-w-md">
                 왼쪽에서 설정을 완료하고 생성 버튼을 클릭하면<br />
                 AI가 소셜 콘텐츠와 CRM 카피를 생성합니다.
               </p>
@@ -673,7 +673,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       activeLanguage === lang
                         ? 'bg-brand-orange text-white'
-                        : 'bg-surface-card text-text-secondary border border-border hover:border-brand-orange'
+                        : 'bg-white text-gray-500 border border-gray-200 hover:border-brand-orange'
                     }`}
                   >
                     {LANGUAGE_OPTIONS.find(l => l.id === lang)?.flag} {LANGUAGE_OPTIONS.find(l => l.id === lang)?.label}
@@ -690,21 +690,21 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                 const copyId = `${platform}-${activeLanguage}`;
 
                 return (
-                  <div key={platform} className="bg-surface-card rounded-xl border border-border overflow-hidden">
-                    <div className="flex items-center justify-between p-4 border-b border-border bg-surface-overlay/50">
+                  <div key={platform} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-soft">
+                    <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
                       <div className="flex items-center gap-2">
                         {platform === 'meta' ? (
                           <Instagram className="w-5 h-5 text-pink-500" />
                         ) : (
                           <Twitter className="w-5 h-5 text-blue-400" />
                         )}
-                        <span className="font-medium text-text-primary">
+                        <span className="font-medium text-gray-900">
                           {platform === 'meta' ? 'Meta (Instagram)' : 'X (Twitter)'}
                         </span>
                       </div>
                       <button
                         onClick={() => handleCopy(fullText, copyId)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-card border border-border rounded-lg text-sm text-text-secondary hover:text-text-primary hover:border-brand-orange transition-all"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-500 hover:text-gray-900 hover:border-brand-orange transition-all"
                       >
                         {copiedId === copyId ? (
                           <>
@@ -721,12 +721,12 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                     </div>
                     <div className="p-4 space-y-4">
                       <div>
-                        <p className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
+                        <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
                           {content.caption}
                         </p>
                       </div>
-                      <div className="pt-3 border-t border-border">
-                        <p className="text-sm text-blue-400 leading-relaxed">
+                      <div className="pt-3 border-t border-gray-100">
+                        <p className="text-sm text-blue-500 leading-relaxed">
                           {content.hashtags.map(h => h.startsWith('#') ? h : `#${h}`).join(' ')}
                         </p>
                       </div>
@@ -753,7 +753,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       activeLanguage === lang
                         ? 'bg-brand-orange text-white'
-                        : 'bg-surface-card text-text-secondary border border-border hover:border-brand-orange'
+                        : 'bg-white text-gray-500 border border-gray-200 hover:border-brand-orange'
                     }`}
                   >
                     {LANGUAGE_OPTIONS.find(l => l.id === lang)?.flag} {LANGUAGE_OPTIONS.find(l => l.id === lang)?.label}
@@ -770,7 +770,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                   return (
                     <div 
                       key={idx}
-                      className="bg-surface-card rounded-xl border border-border p-4"
+                      className="bg-white rounded-xl border border-gray-200 p-4 shadow-soft"
                     >
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-medium text-brand-orange bg-brand-orange/10 px-2 py-1 rounded">
@@ -778,7 +778,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                         </span>
                         <button
                           onClick={() => handleCopy(fullText, copyId)}
-                          className="text-text-muted hover:text-text-primary transition-colors"
+                          className="text-gray-400 hover:text-gray-900 transition-colors"
                         >
                           {copiedId === copyId ? (
                             <Check className="w-4 h-4 text-green-500" />
@@ -789,16 +789,16 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                       </div>
                       
                       {/* 푸시 미리보기 */}
-                      <div className="bg-surface-overlay rounded-lg p-3 space-y-1">
-                        <div className="flex items-center justify-between text-[10px] text-text-muted">
+                      <div className="bg-gray-50 rounded-lg p-3 space-y-1 border border-gray-100">
+                        <div className="flex items-center justify-between text-[10px] text-gray-400">
                           <span>🔔 아이디어스</span>
                           <span>지금</span>
                         </div>
-                        <p className="text-sm font-medium text-text-primary">{copy.mainCopy}</p>
-                        <p className="text-xs text-text-secondary">{copy.subCopy}</p>
+                        <p className="text-sm font-medium text-gray-900">{copy.mainCopy}</p>
+                        <p className="text-xs text-gray-600">{copy.subCopy}</p>
                       </div>
                       
-                      <div className="mt-3 text-[10px] text-text-muted">
+                      <div className="mt-3 text-[10px] text-gray-400">
                         메인: {copy.mainCopy.length}자 | 서브: {copy.subCopy.length}자
                       </div>
                     </div>
@@ -808,14 +808,14 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
 
               {/* 발송 시간 추천 */}
               {crmResult.sendingTime && crmResult.sendingTime.length > 0 && (
-                <div className="bg-surface-card rounded-xl border border-border p-4">
-                  <h4 className="text-sm font-semibold text-text-primary mb-3">📅 추천 발송 시간</h4>
+                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-soft">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">📅 추천 발송 시간</h4>
                   <div className="space-y-2">
                     {crmResult.sendingTime.map((st, idx) => (
                       <div key={idx} className="flex items-center gap-3 text-sm">
-                        <span className="text-text-muted w-20">{st.region}</span>
-                        <span className="font-medium text-text-primary">{st.time}</span>
-                        <span className="text-text-secondary text-xs">({st.reason})</span>
+                        <span className="text-gray-400 w-20">{st.region}</span>
+                        <span className="font-medium text-gray-900">{st.time}</span>
+                        <span className="text-gray-500 text-xs">({st.reason})</span>
                       </div>
                     ))}
                   </div>

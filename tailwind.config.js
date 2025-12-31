@@ -7,6 +7,7 @@ export default {
     "./components/**/*.{js,ts,jsx,tsx}",
     "./store/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class', // 다크 모드 클래스 기반 전환
   theme: {
     extend: {
       fontFamily: {
@@ -20,25 +21,37 @@ export default {
           'orange-dark': '#E55A2B',
           black: '#1A1A1A',
         },
-        // 배경
+        // 라이트 모드 배경 (기본)
         surface: {
-          DEFAULT: '#0A0E17',
-          raised: '#111827',
-          overlay: '#1F2937',
-          card: '#161B26',
+          DEFAULT: '#FAFBFC',
+          raised: '#FFFFFF',
+          overlay: '#F3F4F6',
+          card: '#FFFFFF',
         },
-        // 테두리
+        // 라이트 모드 테두리
         border: {
-          DEFAULT: 'rgba(255, 255, 255, 0.08)',
-          hover: 'rgba(255, 255, 255, 0.15)',
+          DEFAULT: 'rgba(0, 0, 0, 0.08)',
+          hover: 'rgba(0, 0, 0, 0.15)',
           active: 'rgba(255, 107, 53, 0.5)',
         },
-        // 텍스트
+        // 라이트 모드 텍스트
         text: {
-          primary: '#FFFFFF',
-          secondary: '#9CA3AF',
-          muted: '#6B7280',
-          disabled: '#4B5563',
+          primary: '#111827',
+          secondary: '#6B7280',
+          muted: '#9CA3AF',
+          disabled: '#D1D5DB',
+        },
+        // 다크 모드 전용 컬러
+        dark: {
+          surface: '#0A0E17',
+          'surface-raised': '#111827',
+          'surface-overlay': '#1F2937',
+          'surface-card': '#161B26',
+          border: 'rgba(255, 255, 255, 0.08)',
+          'border-hover': 'rgba(255, 255, 255, 0.15)',
+          'text-primary': '#FFFFFF',
+          'text-secondary': '#9CA3AF',
+          'text-muted': '#6B7280',
         },
       },
       animation: {
@@ -82,7 +95,13 @@ export default {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'shimmer': 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
+        'shimmer': 'linear-gradient(90deg, transparent, rgba(0,0,0,0.04), transparent)',
+        'shimmer-dark': 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
+      },
+      boxShadow: {
+        'soft': '0 2px 8px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04)',
+        'medium': '0 4px 12px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.06)',
+        'brand': '0 4px 14px rgba(255, 107, 53, 0.25)',
       },
     },
   },
