@@ -55,11 +55,12 @@ RUN playwright install chromium
 # 앱 코드 복사
 COPY backend/app ./app
 
+# 환경변수 설정
+ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+ENV PORT=8000
+
 # 포트 노출
 EXPOSE 8000
 
-# 환경변수 설정
-ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
-
-# 서버 실행
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 서버 실행 (Railway는 PORT 환경변수를 자동 설정)
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT}

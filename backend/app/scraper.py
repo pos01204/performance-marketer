@@ -11,7 +11,7 @@ from playwright.async_api import async_playwright, Browser, Page
 from playwright_stealth import stealth_async
 
 
-class IdusScaper:
+class IdusScraper:
     def __init__(self):
         self.browser: Optional[Browser] = None
         self.playwright = None
