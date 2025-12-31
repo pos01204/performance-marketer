@@ -1,0 +1,5 @@
+{
+  "name": "Copy of 아이디어스 온드미디어 포스팅 도우미",
+  "description": "아이디어스 작품을 위한 다국어 마케팅 콘텐츠를 생성하는 AI 기반 대시보드입니다. 작품 URL과 이미지를 입력받아, Gemini를 사용하여 메타(Meta) 및 X 플랫폼에 맞는 한국어, 영어, 일본어 캡션과 해시태그를 생성합니다.",
+  "requestFramePermissions": []
+}

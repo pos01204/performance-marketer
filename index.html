@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/brand/brand%20assets/Frame.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="아이디어스 글로벌 마케팅 스튜디오 - 소셜 콘텐츠 및 CRM 카피 자동 생성" />
+    <title>idus Marketing Studio</title>
+    
+    <!-- SUITE Font -->
+    <link rel="stylesheet" href="/fonts/SUITE-Variable-woff2/SUITE-Variable.css" />
+    
+    <!-- Pretendard Fallback -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    
+    <style>
+      /* Base Styles */
+      :root {
+        --color-brand-orange: #FF6B35;
+        --color-brand-orange-light: #FF8C5A;
+        --color-surface: #0A0E17;
+        --color-surface-card: #161B26;
+        --color-text-primary: #FFFFFF;
+        --color-text-secondary: #9CA3AF;
+        --color-border: rgba(255, 255, 255, 0.08);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'SUITE Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        background-color: var(--color-surface);
+        color: var(--color-text-primary);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Ambient Gradient */
+      .ambient-glow {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 600px;
+        background: 
+          radial-gradient(50% 80% at 50% -20%, rgba(255, 107, 53, 0.08) 0%, transparent 100%),
+          radial-gradient(30% 50% at 80% 10%, rgba(255, 107, 53, 0.05) 0%, transparent 100%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      /* Selection */
+      ::selection {
+        background-color: rgba(255, 107, 53, 0.3);
+        color: white;
+      }
+
+      /* Loading Spinner */
+      #loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--color-surface);
+        z-index: 9999;
+      }
+
+      #loading img {
+        width: 80px;
+        height: 80px;
+      }
+
+      #loading p {
+        margin-top: 16px;
+        color: var(--color-text-secondary);
+        font-size: 14px;
+      }
+
+      /* Hide loading when app is ready */
+      body.loaded #loading {
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="antialiased h-screen overflow-hidden">
+    <div class="ambient-glow"></div>
+    
+    <!-- Loading Screen -->
+    <div id="loading">
+      <img src="/loading/3times.gif" alt="Loading..." />
+      <p>Marketing Studio 로딩 중...</p>
+    </div>
+
+    <!-- App Root -->
+    <div id="root" class="h-full relative z-10"></div>
+    
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
