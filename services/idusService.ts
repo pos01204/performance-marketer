@@ -3,11 +3,17 @@ import type { IdusProduct, ProductSearchParams } from '../types';
 // 페이지당 아이템 수
 export const ITEMS_PER_PAGE = 24;
 
-// Railway 백엔드 API URL (환경변수에서 가져오거나 기본값 사용)
+// Railway 백엔드 API URL (환경변수에서 가져옴)
 const CRAWLER_API_URL = import.meta.env.VITE_CRAWLER_API_URL || '';
 
-// Vercel API URL (fallback)
+// Vercel API URL (fallback - 같은 도메인의 /api 사용)
 const VERCEL_API_URL = import.meta.env.VITE_API_URL || '';
+
+// 환경변수 확인 로그 (개발 시 도움)
+console.log('환경변수 확인:', {
+  CRAWLER_API_URL: CRAWLER_API_URL || '(미설정)',
+  VERCEL_API_URL: VERCEL_API_URL || '(미설정, 같은 도메인 사용)',
+});
 
 /**
  * 작품 검색 결과 타입 (페이지네이션 포함)
@@ -33,16 +39,19 @@ export async function searchProductsWithPagination(params: ProductSearchParams):
 
   // 1. Railway 백엔드 API 시도 (playwright-stealth 사용)
   if (CRAWLER_API_URL) {
+    console.log(`Railway API 호출 시도: ${CRAWLER_API_URL}/api/search`);
     try {
       const result = await searchViaRailwayApi(trimmedKeyword, sort, page);
       if (result.products.length > 0) {
-        console.log(`Railway API 성공: ${result.products.length}개 상품`);
+        console.log(`✅ Railway API 성공: ${result.products.length}개 상품`);
         return result;
       }
       console.log('Railway API 결과 없음');
     } catch (error) {
-      console.error('Railway API 호출 실패:', error);
+      console.error('❌ Railway API 호출 실패:', error);
     }
+  } else {
+    console.log('Railway API URL 미설정 (VITE_CRAWLER_API_URL)');
   }
 
   // 2. Vercel API 시도 (fallback)
