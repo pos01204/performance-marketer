@@ -493,6 +493,74 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({ onNavigateBack }) 
                 className="w-full bg-surface-card border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-orange"
               />
             </div>
+
+            {/* 기획전 기반 확장 UI */}
+            {crmType === 'exhibition' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl"
+              >
+                <h4 className="text-sm font-medium text-blue-400 flex items-center gap-2">
+                  🎪 기획전 정보 입력
+                </h4>
+                <div>
+                  <label className="text-xs text-text-muted mb-1.5 block">기획전 URL</label>
+                  <input
+                    type="url"
+                    value={exhibitionUrl}
+                    onChange={(e) => setExhibitionUrl(e.target.value)}
+                    placeholder="https://www.idus.com/w/exhibition/..."
+                    className="w-full bg-surface-card border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-text-muted mb-1.5 block">기획전 제목/테마</label>
+                  <input
+                    type="text"
+                    value={exhibitionTitle}
+                    onChange={(e) => setExhibitionTitle(e.target.value)}
+                    placeholder="예: 크리스마스 특별전 - 따뜻한 손길의 선물"
+                    className="w-full bg-surface-card border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {/* 작가 홈 기반 확장 UI */}
+            {crmType === 'artist' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-3 p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl"
+              >
+                <h4 className="text-sm font-medium text-purple-400 flex items-center gap-2">
+                  👤 작가 정보 입력
+                </h4>
+                <div>
+                  <label className="text-xs text-text-muted mb-1.5 block">작가 홈 URL</label>
+                  <input
+                    type="url"
+                    value={artistUrl}
+                    onChange={(e) => setArtistUrl(e.target.value)}
+                    placeholder="https://www.idus.com/w/artist/..."
+                    className="w-full bg-surface-card border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-text-muted mb-1.5 block">작가명</label>
+                  <input
+                    type="text"
+                    value={artistName}
+                    onChange={(e) => setArtistName(e.target.value)}
+                    placeholder="예: 도예공방 달"
+                    className="w-full bg-surface-card border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </motion.div>
+            )}
           </div>
 
           {/* 생성 버튼 */}

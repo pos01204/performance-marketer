@@ -13,7 +13,10 @@ import {
   MessageSquare,
   ExternalLink,
   Download,
-  AlertCircle
+  AlertCircle,
+  Search,
+  X,
+  Filter
 } from 'lucide-react';
 import { useCampaignStore } from '../store/campaignStore';
 import { formatPrice } from '../services/idusService';
@@ -27,6 +30,50 @@ export const History: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // 검색 및 필터 상태
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'social' | 'crm' | 'both'>('all');
+  const [filterPeriod, setFilterPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
+
+  // 필터링된 히스토리
+  const filteredHistory = history.filter((item) => {
+    // 검색어 필터
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesProduct = item.products.some(p => 
+        p.title.toLowerCase().includes(query) || 
+        p.artistName.toLowerCase().includes(query)
+      );
+      if (!matchesProduct) return false;
+    }
+
+    // 타입 필터
+    if (filterType !== 'all') {
+      if (filterType === 'social' && !item.socialResult) return false;
+      if (filterType === 'crm' && !item.crmResult) return false;
+      if (filterType === 'both' && (!item.socialResult || !item.crmResult)) return false;
+    }
+
+    // 기간 필터
+    if (filterPeriod !== 'all') {
+      const itemDate = new Date(item.createdAt);
+      const now = new Date();
+      
+      if (filterPeriod === 'today') {
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (itemDate < today) return false;
+      } else if (filterPeriod === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        if (itemDate < weekAgo) return false;
+      } else if (filterPeriod === 'month') {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        if (itemDate < monthAgo) return false;
+      }
+    }
+
+    return true;
+  });
 
   const handleCopy = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text);
@@ -112,31 +159,125 @@ export const History: React.FC = () => {
     <div className="flex flex-col h-full">
       {/* 헤더 */}
       <div className="flex-shrink-0 px-8 py-6 border-b border-border bg-surface/50 backdrop-blur-sm">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
-              <HistoryIcon className="w-6 h-6 text-brand-orange" />
-              히스토리
-            </h1>
-            <p className="text-sm text-text-secondary mt-1">
-              총 {history.length}개의 콘텐츠 생성 기록
-            </p>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+                <HistoryIcon className="w-6 h-6 text-brand-orange" />
+                히스토리
+              </h1>
+              <p className="text-sm text-text-secondary mt-1">
+                총 {history.length}개 중 {filteredHistory.length}개 표시
+              </p>
+            </div>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              전체 삭제
+            </button>
           </div>
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            전체 삭제
-          </button>
+
+          {/* 검색 및 필터 */}
+          <div className="flex flex-wrap gap-3">
+            {/* 검색 입력 */}
+            <div className="flex-1 min-w-[200px] relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="작품명, 작가명으로 검색..."
+                className="w-full bg-surface-card border border-border rounded-lg pl-9 pr-8 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-orange"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* 타입 필터 */}
+            <div className="flex items-center gap-1 bg-surface-card rounded-lg border border-border p-1">
+              {[
+                { id: 'all', label: '전체' },
+                { id: 'social', label: '소셜' },
+                { id: 'crm', label: 'CRM' },
+                { id: 'both', label: '소셜+CRM' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setFilterType(opt.id as typeof filterType)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    filterType === opt.id
+                      ? 'bg-brand-orange text-white'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 기간 필터 */}
+            <div className="flex items-center gap-1 bg-surface-card rounded-lg border border-border p-1">
+              {[
+                { id: 'all', label: '전체 기간' },
+                { id: 'today', label: '오늘' },
+                { id: 'week', label: '이번 주' },
+                { id: 'month', label: '이번 달' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setFilterPeriod(opt.id as typeof filterPeriod)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    filterPeriod === opt.id
+                      ? 'bg-brand-orange text-white'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* 기록 목록 */}
       <div className="flex-1 overflow-y-auto px-8 py-6">
         <div className="max-w-5xl mx-auto space-y-4">
+          {/* 검색 결과 없음 */}
+          {filteredHistory.length === 0 && history.length > 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 rounded-full bg-surface-card border border-border flex items-center justify-center mb-4">
+                <Filter className="w-8 h-8 text-text-muted" />
+              </div>
+              <h3 className="text-lg font-semibold text-text-primary mb-2">
+                검색 결과가 없습니다
+              </h3>
+              <p className="text-text-secondary text-sm mb-4">
+                다른 검색어나 필터를 시도해보세요
+              </p>
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterType('all');
+                  setFilterPeriod('all');
+                }}
+                className="px-4 py-2 text-sm text-brand-orange hover:bg-brand-orange/10 rounded-lg transition-colors"
+              >
+                필터 초기화
+              </button>
+            </div>
+          )}
+
           <AnimatePresence mode="popLayout">
-            {history.map((item) => (
+            {filteredHistory.map((item) => (
               <motion.div
                 key={item.id}
                 layout

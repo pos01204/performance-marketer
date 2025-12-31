@@ -262,10 +262,10 @@ async function searchIdusDirectly(
   
   const sortValue = sortMap[sort] || 'POPULAR';
   
-  // 개발 환경에서는 Vite 프록시 사용
+  // 개발 환경에서는 Vite 프록시 사용 (v3 API 사용)
   const apiUrl = import.meta.env.DEV 
-    ? `/idus-api/api/v2/search/product`
-    : `https://api.idus.com/api/v2/search/product`;
+    ? `/idus-api/api/v3/search/product`
+    : `https://api.idus.com/api/v3/search/product`;
   
   const params = new URLSearchParams({
     keyword: keyword,
@@ -289,8 +289,9 @@ async function searchIdusDirectly(
 
     const data = await response.json();
     
-    // 응답 데이터 변환
-    const products: IdusProduct[] = (data.result?.products || []).map((item: any) => ({
+    // 응답 데이터 변환 (다양한 응답 구조 지원)
+    const rawProducts = data.result?.products || data.products || [];
+    const products: IdusProduct[] = rawProducts.map((item: any) => ({
       id: item.uuid,
       title: item.name,
       price: item.price,
@@ -306,8 +307,8 @@ async function searchIdusDirectly(
 
     return {
       products,
-      hasMore: data.result?.hasMore || products.length >= ITEMS_PER_PAGE,
-      totalCount: data.result?.totalCount || products.length,
+      hasMore: data.result?.hasMore || data.hasMore || products.length >= ITEMS_PER_PAGE,
+      totalCount: data.result?.totalCount || data.totalCount || products.length,
       page,
     };
   } catch (apiError) {
@@ -326,19 +327,11 @@ async function searchIdusWebPage(
   sort: string = 'popular',
   page: number = 1
 ): Promise<SearchResultWithPagination> {
-  const sortMap: Record<string, string> = {
-    'popular': 'popular',
-    'newest': 'newest',
-    'price_asc': 'low_price',
-    'price_desc': 'high_price',
-    'rating': 'review',
-  };
-  
-  const sortValue = sortMap[sort] || 'popular';
-  
-  // 개발 환경에서는 Vite 프록시 사용
+  // 개발 환경에서는 Vite 프록시 사용, 새로운 v2 URL 사용
   const baseUrl = import.meta.env.DEV ? '/idus-proxy' : '';
-  const searchUrl = `${baseUrl}/w/search?keyword=${encodeURIComponent(keyword)}&sort=${sortValue}&page=${page}`;
+  const searchUrl = `${baseUrl}/v2/search?keyword=${encodeURIComponent(keyword)}`;
+  
+  console.log('Fetching idus web page:', searchUrl);
   
   const response = await fetch(searchUrl, {
     method: 'GET',
