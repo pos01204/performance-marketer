@@ -1,76 +1,268 @@
 import type { IdusProduct, ProductSearchParams, ProductSearchResult } from '../types';
 
-// API 엔드포인트 설정
-// 1. 환경변수가 있으면 사용
-// 2. 프로덕션이면 같은 도메인의 /api 사용
-// 3. 개발 모드면 직접 idus API 호출 시도
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (import.meta.env.PROD ? '' : '');
-
 // 페이지당 아이템 수
 export const ITEMS_PER_PAGE = 24;
 
-// 개발 모드에서 Mock 사용 여부 (false로 설정하면 실제 API 호출 시도)
-const USE_MOCK_IN_DEV = false;
+// 공개 CORS 프록시 목록 (여러 개 준비하여 하나가 실패하면 다음 시도)
+const CORS_PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?',
+  'https://api.codetabs.com/v1/proxy?quest=',
+];
 
 /**
- * idus 작품 검색
- * 서버사이드 크롤링 API를 호출합니다.
+ * 작품 검색 결과 타입 (페이지네이션 포함)
  */
-export async function searchIdusProducts(params: ProductSearchParams): Promise<IdusProduct[]> {
-  const { keyword, sort = 'popular', page = 1 } = params;
+export interface SearchResultWithPagination {
+  products: IdusProduct[];
+  hasMore: boolean;
+  totalCount: number;
+  page: number;
+}
+
+/**
+ * 작품 검색 (페이지네이션 포함) - 메인 함수
+ */
+export async function searchProductsWithPagination(params: ProductSearchParams): Promise<SearchResultWithPagination> {
+  const { keyword, page = 1, sort = 'popular' } = params;
 
   if (!keyword || keyword.trim().length === 0) {
     throw new Error('검색어를 입력해주세요');
   }
 
+  // 공개 CORS 프록시를 통한 직접 크롤링 시도
   try {
-    const response = await fetch(`${API_BASE_URL}/api/crawl/search`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ keyword: keyword.trim(), sort, page }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || '검색에 실패했습니다');
+    const result = await fetchIdusViaProxy(keyword.trim(), sort, page);
+    if (result.products.length > 0) {
+      return result;
     }
-
-    const data: ProductSearchResult = await response.json();
-    return data.products || [];
   } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('네트워크 오류가 발생했습니다');
+    console.error('프록시 크롤링 실패:', error);
   }
+
+  // 모든 방법 실패 시 Mock 데이터 반환
+  console.warn('실제 검색 실패, Mock 데이터로 대체합니다.');
+  const mockResult = getMockProducts(keyword, page);
+  return {
+    ...mockResult,
+    page,
+  };
 }
 
 /**
- * 실제 idus 이미지 URL 생성
+ * 작품 검색 (간단한 버전)
  */
-function getIdusImageUrl(index: number): string {
-  // 실제 idus CDN 이미지 패턴 사용
-  const imageIds = [
-    '5e8c7d6b-4a3f-4e2d-9b1c-8a7f6e5d4c3b',
-    '6f9d8e7c-5b4a-4f3e-0c2d-9b8a7f6e5d4c',
-    '7a0e9f8d-6c5b-4a4f-1d3e-0c9b8a7f6e5d',
-    '8b1f0a9e-7d6c-5b5a-2e4f-1d0c9b8a7f6e',
-    '9c2a1b0f-8e7d-6c6b-3f5a-2e1d0c9b8a7f',
-    'ad3b2c1a-9f8e-7d7c-4a6b-3f2e1d0c9b8a',
-  ];
-  const id = imageIds[index % imageIds.length];
-  return `https://image.idus.com/image/files/${id}_720.jpg`;
+export async function searchProducts(params: ProductSearchParams): Promise<IdusProduct[]> {
+  const result = await searchProductsWithPagination(params);
+  return result.products;
 }
 
 /**
- * 키워드 기반 Mock 데이터 생성
- * API 실패 시 키워드에 맞는 샘플 데이터 제공
+ * CORS 프록시를 통해 idus 웹 페이지 가져오기
+ */
+async function fetchIdusViaProxy(
+  keyword: string,
+  sort: string = 'popular',
+  page: number = 1
+): Promise<SearchResultWithPagination> {
+  // 정렬 매핑
+  const sortMap: Record<string, string> = {
+    'popular': 'popular',
+    'newest': 'recent',
+    'price_asc': 'price_asc',
+    'price_desc': 'price_desc',
+    'rating': 'rating',
+  };
+
+  const sortValue = sortMap[sort] || 'popular';
+  const targetUrl = `https://www.idus.com/v2/search?keyword=${encodeURIComponent(keyword)}&order=${sortValue}`;
+
+  // 여러 프록시 시도
+  for (const proxyBase of CORS_PROXIES) {
+    try {
+      const proxyUrl = `${proxyBase}${encodeURIComponent(targetUrl)}`;
+      console.log(`Trying proxy: ${proxyBase}`);
+
+      const response = await fetch(proxyUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml',
+        },
+      });
+
+      if (!response.ok) {
+        console.warn(`Proxy ${proxyBase} returned ${response.status}`);
+        continue;
+      }
+
+      const html = await response.text();
+      
+      // HTML이 너무 짧으면 에러로 판단
+      if (html.length < 1000) {
+        console.warn(`Proxy ${proxyBase} returned too short response`);
+        continue;
+      }
+
+      const products = parseIdusSearchHtml(html);
+      
+      if (products.length > 0) {
+        console.log(`Successfully fetched ${products.length} products via ${proxyBase}`);
+        return {
+          products: products.slice(0, ITEMS_PER_PAGE),
+          hasMore: products.length >= ITEMS_PER_PAGE,
+          totalCount: products.length,
+          page,
+        };
+      }
+    } catch (error) {
+      console.warn(`Proxy ${proxyBase} failed:`, error);
+      continue;
+    }
+  }
+
+  throw new Error('모든 프록시 시도 실패');
+}
+
+/**
+ * idus 검색 결과 HTML에서 __NEXT_DATA__ 파싱
+ */
+function parseIdusSearchHtml(html: string): IdusProduct[] {
+  const products: IdusProduct[] = [];
+
+  try {
+    // 방법 1: __NEXT_DATA__ 스크립트에서 데이터 추출
+    const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+
+    if (nextDataMatch && nextDataMatch[1]) {
+      try {
+        const nextData = JSON.parse(nextDataMatch[1]);
+        
+        // dehydratedState.queries 에서 상품 데이터 찾기
+        const queries = nextData?.props?.pageProps?.dehydratedState?.queries || [];
+        
+        for (const query of queries) {
+          const data = query?.state?.data;
+          
+          // products 배열 찾기
+          if (data?.products && Array.isArray(data.products)) {
+            for (const item of data.products) {
+              const product = extractProductFromItem(item);
+              if (product) {
+                products.push(product);
+              }
+            }
+            if (products.length > 0) break;
+          }
+          
+          // pages 구조 (무한 스크롤용)
+          if (data?.pages && Array.isArray(data.pages)) {
+            for (const pageData of data.pages) {
+              if (pageData?.products && Array.isArray(pageData.products)) {
+                for (const item of pageData.products) {
+                  const product = extractProductFromItem(item);
+                  if (product) {
+                    products.push(product);
+                  }
+                }
+              }
+            }
+            if (products.length > 0) break;
+          }
+        }
+        
+        // pageProps에서 직접 찾기
+        if (products.length === 0) {
+          const pageProps = nextData?.props?.pageProps;
+          if (pageProps?.products && Array.isArray(pageProps.products)) {
+            for (const item of pageProps.products) {
+              const product = extractProductFromItem(item);
+              if (product) {
+                products.push(product);
+              }
+            }
+          }
+          
+          // initialData에서 찾기
+          if (pageProps?.initialData?.products) {
+            for (const item of pageProps.initialData.products) {
+              const product = extractProductFromItem(item);
+              if (product) {
+                products.push(product);
+              }
+            }
+          }
+        }
+      } catch (jsonError) {
+        console.error('JSON 파싱 오류:', jsonError);
+      }
+    }
+
+    // 방법 2: JSON-LD 스크립트에서 찾기
+    if (products.length === 0) {
+      const jsonLdMatches = html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g);
+      for (const match of jsonLdMatches) {
+        try {
+          const jsonLd = JSON.parse(match[1]);
+          if (jsonLd['@type'] === 'ItemList' && jsonLd.itemListElement) {
+            for (const item of jsonLd.itemListElement) {
+              if (item.item || item['@type'] === 'Product') {
+                const productData = item.item || item;
+                products.push({
+                  id: productData.productID || `product-${products.length}`,
+                  title: productData.name || '',
+                  price: parseFloat(productData.offers?.price) || 0,
+                  image: Array.isArray(productData.image) ? productData.image[0] : productData.image || '',
+                  artistName: productData.brand?.name || '작가',
+                  rating: parseFloat(productData.aggregateRating?.ratingValue) || 0,
+                  reviewCount: parseInt(productData.aggregateRating?.reviewCount) || 0,
+                  url: productData.url || '',
+                });
+              }
+            }
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error('HTML 파싱 오류:', error);
+  }
+
+  return products;
+}
+
+/**
+ * 상품 아이템에서 IdusProduct 객체 추출
+ */
+function extractProductFromItem(item: any): IdusProduct | null {
+  if (!item) return null;
+
+  const id = item.uuid || item.id || item.productId;
+  const title = item.name || item.title || item.productName;
+
+  if (!id && !title) return null;
+
+  return {
+    id: id || `product-${Math.random().toString(36).substr(2, 9)}`,
+    title: title || '상품명 없음',
+    price: item.price || item.salePrice || 0,
+    originalPrice: item.originPrice || item.originalPrice || item.listPrice,
+    discountRate: item.discountRate || item.discount,
+    image: item.imageUrl || item.image || item.thumbnailUrl || item.mainImage || '',
+    artistName: item.artistName || item.artist?.name || item.sellerName || '작가',
+    rating: item.reviewAvg || item.rating || item.score || 0,
+    reviewCount: item.reviewCount || item.reviewCnt || 0,
+    url: item.url || `https://www.idus.com/w/product/${id}`,
+    category: item.categoryName || item.category,
+  };
+}
+
+/**
+ * Mock 데이터 생성 (API 실패 시 대체용)
  */
 export function getMockProducts(keyword: string, page: number = 1): { products: IdusProduct[], hasMore: boolean, totalCount: number } {
-  // 키워드별 카테고리 매핑
   const categoryMap: Record<string, { category: string, items: Array<{ title: string, artistName: string, basePrice: number }> }> = {
     '도자기': {
       category: 'ceramic',
@@ -138,9 +330,19 @@ export function getMockProducts(keyword: string, page: number = 1): { products: 
         { title: '키링 카드케이스', artistName: '레더크래프트', basePrice: 25000 },
       ],
     },
+    '액세서리': {
+      category: 'accessory',
+      items: [
+        { title: '핸드메이드 헤어핀 세트', artistName: '소품공방', basePrice: 15000 },
+        { title: '자수 브로치 - 꽃', artistName: '바늘과실', basePrice: 22000 },
+        { title: '우드 귀걸이', artistName: '소품공방', basePrice: 18000 },
+        { title: '비즈 팔찌', artistName: '바늘과실', basePrice: 28000 },
+        { title: '레진 반지', artistName: '소품공방', basePrice: 25000 },
+        { title: '자개 브로치', artistName: '바늘과실', basePrice: 35000 },
+      ],
+    },
   };
 
-  // 기본 카테고리 (키워드가 매핑되지 않을 때)
   const defaultItems = [
     { title: '핸드메이드 작품', artistName: '아이디어스 작가', basePrice: 35000 },
     { title: '수공예 선물', artistName: '공방 아뜰리에', basePrice: 42000 },
@@ -150,8 +352,7 @@ export function getMockProducts(keyword: string, page: number = 1): { products: 
     { title: '정성이 담긴 수공예품', artistName: '홈데코 스튜디오', basePrice: 48000 },
   ];
 
-  // 키워드에 맞는 카테고리 찾기
-  let matchedCategory = categoryMap['도자기']; // 기본값
+  let matchedCategory = null;
   for (const [key, value] of Object.entries(categoryMap)) {
     if (keyword.includes(key)) {
       matchedCategory = value;
@@ -162,10 +363,9 @@ export function getMockProducts(keyword: string, page: number = 1): { products: 
   const items = matchedCategory?.items || defaultItems;
   const category = matchedCategory?.category || 'general';
 
-  // Mock 데이터 생성
   const allProducts: IdusProduct[] = [];
   const totalPages = 3;
-  
+
   for (let i = 0; i < totalPages; i++) {
     items.forEach((item, idx) => {
       const productIndex = i * items.length + idx;
@@ -177,11 +377,11 @@ export function getMockProducts(keyword: string, page: number = 1): { products: 
 
       allProducts.push({
         id: `mock-${category}-${productIndex}`,
-        title: i === 0 ? item.title : `${item.title} #${productIndex + 1}`,
+        title: i === 0 ? `${keyword} - ${item.title}` : `${keyword} - ${item.title} #${productIndex + 1}`,
         price,
         originalPrice: hasDiscount ? originalPrice : undefined,
         discountRate: hasDiscount ? discountRate : undefined,
-        image: getIdusImageUrl(productIndex),
+        image: `https://picsum.photos/seed/${category}${productIndex}/400/400`,
         artistName: item.artistName,
         rating: Math.round((4.5 + Math.random() * 0.5) * 10) / 10,
         reviewCount: Math.floor(Math.random() * 500) + 50,
@@ -191,264 +391,15 @@ export function getMockProducts(keyword: string, page: number = 1): { products: 
     });
   }
 
-  // 페이지네이션 적용
   const startIndex = (page - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedProducts = allProducts.slice(startIndex, endIndex);
-  
+
   return {
     products: paginatedProducts,
     hasMore: endIndex < allProducts.length,
     totalCount: allProducts.length,
   };
-}
-
-/**
- * 작품 검색 결과 타입 (페이지네이션 포함)
- */
-export interface SearchResultWithPagination {
-  products: IdusProduct[];
-  hasMore: boolean;
-  totalCount: number;
-  page: number;
-}
-
-/**
- * 작품 검색 (Mock 또는 실제 API 사용)
- */
-export async function searchProducts(params: ProductSearchParams): Promise<IdusProduct[]> {
-  const result = await searchProductsWithPagination(params);
-  return result.products;
-}
-
-/**
- * 작품 검색 (페이지네이션 포함)
- */
-export async function searchProductsWithPagination(params: ProductSearchParams): Promise<SearchResultWithPagination> {
-  const { keyword, page = 1, sort = 'popular' } = params;
-
-  // Mock 데이터 사용 여부 확인
-  const useMock = USE_MOCK_IN_DEV && import.meta.env.DEV;
-  
-  if (useMock) {
-    // Mock 데이터 반환 (약간의 지연 추가)
-    await new Promise(resolve => setTimeout(resolve, 600));
-    const result = getMockProducts(keyword, page);
-    return {
-      ...result,
-      page,
-    };
-  }
-
-  // 실제 API 호출 시도
-  try {
-    const result = await searchIdusProductsWithPagination(params);
-    return result;
-  } catch (error) {
-    console.error('API 호출 실패, 직접 크롤링 시도:', error);
-    
-    // API 실패 시 직접 idus 검색 시도
-    try {
-      const directResult = await searchIdusDirectly(keyword, sort, page);
-      return directResult;
-    } catch (directError) {
-      console.error('직접 크롤링도 실패:', directError);
-      
-      // 모든 방법 실패 시 Mock 데이터 반환
-      console.warn('Mock 데이터로 대체합니다.');
-      const mockResult = getMockProducts(keyword, page);
-      return {
-        ...mockResult,
-        page,
-      };
-    }
-  }
-}
-
-/**
- * API를 통한 검색 (페이지네이션 포함)
- */
-async function searchIdusProductsWithPagination(params: ProductSearchParams): Promise<SearchResultWithPagination> {
-  const { keyword, sort = 'popular', page = 1 } = params;
-
-  const response = await fetch(`${API_BASE_URL}/api/crawl/search`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ keyword: keyword.trim(), sort, page, size: ITEMS_PER_PAGE }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || '검색에 실패했습니다');
-  }
-
-  const data = await response.json();
-  
-  return {
-    products: data.products || [],
-    hasMore: data.hasMore || data.products?.length >= ITEMS_PER_PAGE,
-    totalCount: data.total || data.products?.length || 0,
-    page,
-  };
-}
-
-/**
- * 직접 idus 검색 (프록시를 통해 CORS 우회)
- */
-async function searchIdusDirectly(
-  keyword: string, 
-  sort: string = 'popular', 
-  page: number = 1
-): Promise<SearchResultWithPagination> {
-  // 정렬 옵션 매핑
-  const sortMap: Record<string, string> = {
-    'popular': 'POPULAR',
-    'newest': 'NEWEST',
-    'price_asc': 'PRICE_ASC',
-    'price_desc': 'PRICE_DESC',
-    'rating': 'REVIEW_AVG',
-  };
-  
-  const sortValue = sortMap[sort] || 'POPULAR';
-  
-  // 개발 환경에서는 Vite 프록시 사용 (v3 API 사용)
-  const apiUrl = import.meta.env.DEV 
-    ? `/idus-api/api/v3/search/product`
-    : `https://api.idus.com/api/v3/search/product`;
-  
-  const params = new URLSearchParams({
-    keyword: keyword,
-    sort: sortValue,
-    page: String(page),
-    size: String(ITEMS_PER_PAGE),
-  });
-
-  try {
-    const response = await fetch(`${apiUrl}?${params.toString()}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`idus API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // 응답 데이터 변환 (다양한 응답 구조 지원)
-    const rawProducts = data.result?.products || data.products || [];
-    const products: IdusProduct[] = rawProducts.map((item: any) => ({
-      id: item.uuid,
-      title: item.name,
-      price: item.price,
-      originalPrice: item.originPrice,
-      discountRate: item.discountRate,
-      image: item.imageUrl,
-      artistName: item.artistName,
-      rating: item.reviewAvg || 0,
-      reviewCount: item.reviewCount || 0,
-      url: `https://www.idus.com/w/product/${item.uuid}`,
-      category: item.categoryName,
-    }));
-
-    return {
-      products,
-      hasMore: data.result?.hasMore || data.hasMore || products.length >= ITEMS_PER_PAGE,
-      totalCount: data.result?.totalCount || data.totalCount || products.length,
-      page,
-    };
-  } catch (apiError) {
-    console.error('idus API 직접 호출 실패:', apiError);
-    
-    // API 실패 시 웹 페이지 크롤링 시도
-    return await searchIdusWebPage(keyword, sort, page);
-  }
-}
-
-/**
- * idus 웹 페이지 크롤링 (Fallback)
- */
-async function searchIdusWebPage(
-  keyword: string,
-  sort: string = 'popular',
-  page: number = 1
-): Promise<SearchResultWithPagination> {
-  // 개발 환경에서는 Vite 프록시 사용, 새로운 v2 URL 사용
-  const baseUrl = import.meta.env.DEV ? '/idus-proxy' : '';
-  const searchUrl = `${baseUrl}/v2/search?keyword=${encodeURIComponent(keyword)}`;
-  
-  console.log('Fetching idus web page:', searchUrl);
-  
-  const response = await fetch(searchUrl, {
-    method: 'GET',
-    headers: {
-      'Accept': 'text/html,application/xhtml+xml',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error('idus 웹 페이지 크롤링 실패');
-  }
-
-  const html = await response.text();
-  const products = parseIdusSearchHtml(html);
-  
-  return {
-    products,
-    hasMore: products.length >= ITEMS_PER_PAGE,
-    totalCount: products.length,
-    page,
-  };
-}
-
-/**
- * idus 검색 결과 HTML 파싱
- */
-function parseIdusSearchHtml(html: string): IdusProduct[] {
-  const products: IdusProduct[] = [];
-  
-  try {
-    // __NEXT_DATA__ 스크립트에서 데이터 추출
-    const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
-    
-    if (nextDataMatch) {
-      const nextData = JSON.parse(nextDataMatch[1]);
-      
-      // React Query 데이터 구조에서 검색 결과 찾기
-      const queries = nextData?.props?.pageProps?.dehydratedState?.queries || [];
-      
-      for (const query of queries) {
-        const data = query?.state?.data;
-        if (data?.products && Array.isArray(data.products)) {
-          for (const item of data.products) {
-            products.push({
-              id: item.uuid || item.id || `product-${products.length}`,
-              title: item.name || item.title || '',
-              price: item.price || 0,
-              originalPrice: item.originPrice || item.originalPrice,
-              discountRate: item.discountRate,
-              image: item.imageUrl || item.image || '',
-              artistName: item.artistName || item.artist?.name || '작가',
-              rating: item.reviewAvg || item.rating || 0,
-              reviewCount: item.reviewCount || 0,
-              url: `https://www.idus.com/w/product/${item.uuid || item.id}`,
-              category: item.categoryName,
-            });
-          }
-          break; // 첫 번째 products 배열만 사용
-        }
-      }
-    }
-  } catch (error) {
-    console.error('HTML 파싱 오류:', error);
-  }
-  
-  return products;
 }
 
 /**
@@ -470,7 +421,7 @@ export function calculateDiscountRate(originalPrice: number, price: number): num
 }
 
 /**
- * 상품 상세 정보 가져오기
+ * 상품 상세 정보 타입
  */
 export interface ProductDetail extends IdusProduct {
   description?: string;
@@ -481,29 +432,38 @@ export interface ProductDetail extends IdusProduct {
   tags?: string[];
 }
 
+/**
+ * 상품 상세 정보 가져오기 (CORS 프록시 사용)
+ */
 export async function getProductDetail(productId: string): Promise<ProductDetail | null> {
-  try {
-    // 개발 환경에서는 Vite 프록시 사용
-    const baseUrl = import.meta.env.DEV ? '/idus-proxy' : 'https://www.idus.com';
-    const url = `${baseUrl}/w/product/${productId}`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml',
-      },
-    });
+  const targetUrl = `https://www.idus.com/w/product/${productId}`;
 
-    if (!response.ok) {
-      throw new Error(`상품 페이지 로드 실패: ${response.status}`);
+  for (const proxyBase of CORS_PROXIES) {
+    try {
+      const proxyUrl = `${proxyBase}${encodeURIComponent(targetUrl)}`;
+      
+      const response = await fetch(proxyUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html',
+        },
+      });
+
+      if (!response.ok) continue;
+
+      const html = await response.text();
+      const detail = parseProductDetailHtml(html, productId);
+      
+      if (detail) {
+        return detail;
+      }
+    } catch (error) {
+      console.warn(`Product detail fetch failed with proxy ${proxyBase}:`, error);
+      continue;
     }
-
-    const html = await response.text();
-    return parseProductDetailHtml(html, productId);
-  } catch (error) {
-    console.error('상품 상세 정보 가져오기 실패:', error);
-    return null;
   }
+
+  return null;
 }
 
 /**
@@ -511,25 +471,24 @@ export async function getProductDetail(productId: string): Promise<ProductDetail
  */
 function parseProductDetailHtml(html: string, productId: string): ProductDetail | null {
   try {
-    // __NEXT_DATA__에서 상품 정보 추출
-    const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
-    
+    const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+
     if (nextDataMatch) {
       const nextData = JSON.parse(nextDataMatch[1]);
-      const product = nextData?.props?.pageProps?.product;
-      
+      const product = nextData?.props?.pageProps?.product || 
+                      nextData?.props?.pageProps?.initialData?.product;
+
       if (product) {
-        // 추가 이미지 추출
         const additionalImages: string[] = [];
         if (product.images && Array.isArray(product.images)) {
           for (const img of product.images) {
-            if (img.url || img.imageUrl) {
-              additionalImages.push(img.url || img.imageUrl);
+            const imgUrl = img.url || img.imageUrl || img;
+            if (typeof imgUrl === 'string') {
+              additionalImages.push(imgUrl);
             }
           }
         }
 
-        // 태그 추출
         const tags: string[] = [];
         if (product.tags && Array.isArray(product.tags)) {
           for (const tag of product.tags) {
@@ -562,7 +521,7 @@ function parseProductDetailHtml(html: string, productId: string): ProductDetail 
       }
     }
 
-    // JSON-LD 데이터에서 추출 시도
+    // JSON-LD fallback
     const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
     if (jsonLdMatch) {
       const jsonLd = JSON.parse(jsonLdMatch[1]);
@@ -575,7 +534,7 @@ function parseProductDetailHtml(html: string, productId: string): ProductDetail 
           artistName: jsonLd.brand?.name || '작가',
           rating: parseFloat(jsonLd.aggregateRating?.ratingValue) || 0,
           reviewCount: parseInt(jsonLd.aggregateRating?.reviewCount) || 0,
-          url: jsonLd.url || `https://www.idus.com/w/product/${productId}`,
+          url: `https://www.idus.com/w/product/${productId}`,
           description: jsonLd.description || '',
           additionalImages: Array.isArray(jsonLd.image) ? jsonLd.image : [],
         };
@@ -593,7 +552,6 @@ function parseProductDetailHtml(html: string, productId: string): ProductDetail 
  * URL에서 상품 ID 추출
  */
 export function extractProductIdFromUrl(url: string): string | null {
-  // https://www.idus.com/w/product/abc123-def456 형식
   const match = url.match(/\/w\/product\/([a-f0-9-]+)/i);
   return match ? match[1] : null;
 }
