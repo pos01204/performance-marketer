@@ -6,7 +6,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     gnupg \
     ca-certificates \
-    # Chromium 의존성
     libasound2 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
@@ -33,11 +32,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxkbcommon0 \
     libxrandr2 \
     libxshmfence1 \
-    # 폰트 (호환되는 패키지)
     fonts-liberation \
     fonts-noto-cjk \
     fonts-freefont-ttf \
-    # 기타
     xdg-utils \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
@@ -49,11 +46,13 @@ WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Playwright Chromium 설치 (의존성은 위에서 수동 설치했으므로 브라우저만)
+# Playwright Chromium 설치
 RUN playwright install chromium
 
 # 앱 코드 복사
 COPY backend/app ./app
+COPY backend/start.sh ./start.sh
+RUN chmod +x ./start.sh
 
 # 환경변수 설정
 ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
@@ -62,5 +61,5 @@ ENV PORT=8000
 # 포트 노출
 EXPOSE 8000
 
-# 서버 실행 (Railway는 PORT 환경변수를 자동 설정)
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+# 서버 실행
+CMD ["./start.sh"]
