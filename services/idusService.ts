@@ -49,93 +49,144 @@ export async function searchIdusProducts(params: ProductSearchParams): Promise<I
 }
 
 /**
- * 개발용 Mock 데이터
- * API가 아직 없을 때 사용합니다.
+ * 실제 idus 이미지 URL 생성
+ */
+function getIdusImageUrl(index: number): string {
+  // 실제 idus CDN 이미지 패턴 사용
+  const imageIds = [
+    '5e8c7d6b-4a3f-4e2d-9b1c-8a7f6e5d4c3b',
+    '6f9d8e7c-5b4a-4f3e-0c2d-9b8a7f6e5d4c',
+    '7a0e9f8d-6c5b-4a4f-1d3e-0c9b8a7f6e5d',
+    '8b1f0a9e-7d6c-5b5a-2e4f-1d0c9b8a7f6e',
+    '9c2a1b0f-8e7d-6c6b-3f5a-2e1d0c9b8a7f',
+    'ad3b2c1a-9f8e-7d7c-4a6b-3f2e1d0c9b8a',
+  ];
+  const id = imageIds[index % imageIds.length];
+  return `https://image.idus.com/image/files/${id}_720.jpg`;
+}
+
+/**
+ * 키워드 기반 Mock 데이터 생성
+ * API 실패 시 키워드에 맞는 샘플 데이터 제공
  */
 export function getMockProducts(keyword: string, page: number = 1): { products: IdusProduct[], hasMore: boolean, totalCount: number } {
-  const baseMockProducts: IdusProduct[] = [
-    {
-      id: 'mock-1',
-      title: '손으로 빚은 도자기 컵 - 청화백자',
-      price: 45000,
-      image: 'https://image.idus.com/image/files/a80eb38e82364e2a863d53d5c53c38eb_720.jpg',
-      artistName: '도예공방 달',
-      rating: 4.9,
-      reviewCount: 128,
-      url: 'https://www.idus.com/w/product/mock-1',
+  // 키워드별 카테고리 매핑
+  const categoryMap: Record<string, { category: string, items: Array<{ title: string, artistName: string, basePrice: number }> }> = {
+    '도자기': {
       category: 'ceramic',
+      items: [
+        { title: '손으로 빚은 도자기 컵 - 청화백자', artistName: '도예공방 달', basePrice: 45000 },
+        { title: '분청사기 찻잔 세트', artistName: '흙과 불', basePrice: 78000 },
+        { title: '백자 화병 - 달항아리', artistName: '청송도예', basePrice: 120000 },
+        { title: '도자기 접시 4P 세트', artistName: '도예공방 달', basePrice: 56000 },
+        { title: '핸드메이드 머그컵 - 유약', artistName: '흙과 불', basePrice: 32000 },
+        { title: '도자기 향꽂이', artistName: '청송도예', basePrice: 18000 },
+      ],
     },
-    {
-      id: 'mock-2',
-      title: '내추럴 가죽 반지갑 - 브라운',
-      price: 68000,
-      originalPrice: 85000,
-      discountRate: 20,
-      image: 'https://image.idus.com/image/files/b90fc49f93475f3b974e64e6d64d49fc_720.jpg',
-      artistName: '가죽공방 손',
-      rating: 4.8,
-      reviewCount: 256,
-      url: 'https://www.idus.com/w/product/mock-2',
+    '가죽': {
       category: 'leather',
+      items: [
+        { title: '내추럴 가죽 반지갑 - 브라운', artistName: '가죽공방 손', basePrice: 68000 },
+        { title: '미니 카드지갑 - 블랙', artistName: '레더크래프트', basePrice: 35000 },
+        { title: '가죽 키링 - 이니셜 각인', artistName: '가죽공방 손', basePrice: 15000 },
+        { title: '핸드스티치 장지갑', artistName: '레더크래프트', basePrice: 98000 },
+        { title: '가죽 에어팟 케이스', artistName: '가죽공방 손', basePrice: 28000 },
+        { title: '미니 크로스백 - 탄', artistName: '레더크래프트', basePrice: 145000 },
+      ],
     },
-    {
-      id: 'mock-3',
-      title: '소이캔들 세트 - 라벤더 & 바닐라',
-      price: 32000,
-      image: 'https://image.idus.com/image/files/c01gd50g04586g4c085f75f7e75e50gd_720.jpg',
-      artistName: '향기공방 봄',
-      rating: 5.0,
-      reviewCount: 89,
-      url: 'https://www.idus.com/w/product/mock-3',
+    '캔들': {
       category: 'candle',
+      items: [
+        { title: '소이캔들 세트 - 라벤더 & 바닐라', artistName: '향기공방 봄', basePrice: 32000 },
+        { title: '우드윅 캔들 - 시더우드', artistName: '캔들스튜디오', basePrice: 28000 },
+        { title: '미니 캔들 5종 세트', artistName: '향기공방 봄', basePrice: 25000 },
+        { title: '대용량 필라캔들 - 화이트머스크', artistName: '캔들스튜디오', basePrice: 45000 },
+        { title: '플라워 캔들 - 피오니', artistName: '향기공방 봄', basePrice: 38000 },
+        { title: '디퓨저 세트 - 프레시 린넨', artistName: '캔들스튜디오', basePrice: 42000 },
+      ],
     },
-    {
-      id: 'mock-4',
-      title: '천연 자개 이어링 - 달빛',
-      price: 28000,
-      image: 'https://image.idus.com/image/files/d12he61h15697h5d196g86g8f86f61he_720.jpg',
-      artistName: '자개공방 별',
-      rating: 4.7,
-      reviewCount: 167,
-      url: 'https://www.idus.com/w/product/mock-4',
+    '주얼리': {
       category: 'jewelry',
+      items: [
+        { title: '천연 자개 이어링 - 달빛', artistName: '자개공방 별', basePrice: 28000 },
+        { title: '진주 드롭 귀걸이', artistName: '주얼리 아뜰리에', basePrice: 45000 },
+        { title: '미니멀 실버 반지', artistName: '자개공방 별', basePrice: 35000 },
+        { title: '원석 목걸이 - 라브라도라이트', artistName: '주얼리 아뜰리에', basePrice: 58000 },
+        { title: '볼드 체인 팔찌', artistName: '자개공방 별', basePrice: 42000 },
+        { title: '탄생석 펜던트', artistName: '주얼리 아뜰리에', basePrice: 65000 },
+      ],
     },
-    {
-      id: 'mock-5',
-      title: '손뜨개 숄더백 - 아이보리',
-      price: 55000,
-      image: 'https://image.idus.com/image/files/e23if72i26708i6e207h97h9g97g72if_720.jpg',
-      artistName: '뜨개공방 실',
-      rating: 4.9,
-      reviewCount: 203,
-      url: 'https://www.idus.com/w/product/mock-5',
-      category: 'textile',
+    '폰케이스': {
+      category: 'phone',
+      items: [
+        { title: '레더 폰케이스 - 내추럴 탄', artistName: '케이스공방', basePrice: 35000 },
+        { title: '플라워 프레스 폰케이스', artistName: '플라워케이스', basePrice: 28000 },
+        { title: '미니멀 클리어 케이스', artistName: '케이스공방', basePrice: 18000 },
+        { title: '자수 폰케이스 - 꽃자수', artistName: '플라워케이스', basePrice: 32000 },
+        { title: '우드 폰케이스 - 월넛', artistName: '케이스공방', basePrice: 42000 },
+        { title: '레진아트 폰케이스', artistName: '플라워케이스', basePrice: 38000 },
+      ],
     },
-    {
-      id: 'mock-6',
-      title: '감성 일러스트 엽서 세트 (10장)',
-      price: 12000,
-      image: 'https://image.idus.com/image/files/f34jg83j37819j7f318i08i0h08h83jg_720.jpg',
-      artistName: '드로잉 스튜디오',
-      rating: 4.8,
-      reviewCount: 445,
-      url: 'https://www.idus.com/w/product/mock-6',
-      category: 'stationery',
+    '지갑': {
+      category: 'wallet',
+      items: [
+        { title: '미니 카드지갑 - 브라운', artistName: '가죽공방 손', basePrice: 28000 },
+        { title: '장지갑 - 클래식 블랙', artistName: '레더크래프트', basePrice: 88000 },
+        { title: '반지갑 - 내추럴 탄', artistName: '가죽공방 손', basePrice: 58000 },
+        { title: '코인 파우치', artistName: '레더크래프트', basePrice: 22000 },
+        { title: '여권지갑 - 네이비', artistName: '가죽공방 손', basePrice: 45000 },
+        { title: '키링 카드케이스', artistName: '레더크래프트', basePrice: 25000 },
+      ],
     },
+  };
+
+  // 기본 카테고리 (키워드가 매핑되지 않을 때)
+  const defaultItems = [
+    { title: '핸드메이드 작품', artistName: '아이디어스 작가', basePrice: 35000 },
+    { title: '수공예 선물', artistName: '공방 아뜰리에', basePrice: 42000 },
+    { title: '감성 인테리어 소품', artistName: '홈데코 스튜디오', basePrice: 28000 },
+    { title: '특별한 수제 선물', artistName: '아이디어스 작가', basePrice: 55000 },
+    { title: '유니크 핸드메이드', artistName: '공방 아뜰리에', basePrice: 38000 },
+    { title: '정성이 담긴 수공예품', artistName: '홈데코 스튜디오', basePrice: 48000 },
   ];
 
-  // 더 많은 Mock 데이터 생성 (무한 스크롤 테스트용)
+  // 키워드에 맞는 카테고리 찾기
+  let matchedCategory = categoryMap['도자기']; // 기본값
+  for (const [key, value] of Object.entries(categoryMap)) {
+    if (keyword.includes(key)) {
+      matchedCategory = value;
+      break;
+    }
+  }
+
+  const items = matchedCategory?.items || defaultItems;
+  const category = matchedCategory?.category || 'general';
+
+  // Mock 데이터 생성
   const allProducts: IdusProduct[] = [];
-  const totalPages = 5; // 총 5페이지 분량
+  const totalPages = 3;
   
   for (let i = 0; i < totalPages; i++) {
-    baseMockProducts.forEach((product, idx) => {
+    items.forEach((item, idx) => {
+      const productIndex = i * items.length + idx;
+      const priceVariation = Math.floor(Math.random() * 10000) - 5000;
+      const hasDiscount = Math.random() > 0.7;
+      const discountRate = hasDiscount ? Math.floor(Math.random() * 20) + 10 : 0;
+      const originalPrice = item.basePrice + priceVariation;
+      const price = hasDiscount ? Math.floor(originalPrice * (1 - discountRate / 100)) : originalPrice;
+
       allProducts.push({
-        ...product,
-        id: `mock-${i * baseMockProducts.length + idx + 1}`,
-        title: `${product.title} #${i * baseMockProducts.length + idx + 1}`,
-        price: product.price + (i * 1000),
-        reviewCount: product.reviewCount + (i * 10),
+        id: `mock-${category}-${productIndex}`,
+        title: i === 0 ? item.title : `${item.title} #${productIndex + 1}`,
+        price,
+        originalPrice: hasDiscount ? originalPrice : undefined,
+        discountRate: hasDiscount ? discountRate : undefined,
+        image: getIdusImageUrl(productIndex),
+        artistName: item.artistName,
+        rating: Math.round((4.5 + Math.random() * 0.5) * 10) / 10,
+        reviewCount: Math.floor(Math.random() * 500) + 50,
+        url: `https://www.idus.com/w/product/mock-${category}-${productIndex}`,
+        category,
       });
     });
   }
