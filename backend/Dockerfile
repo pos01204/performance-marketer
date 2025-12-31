@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # 의존성 파일 복사 및 설치
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Playwright 브라우저 설치
@@ -39,7 +39,7 @@ RUN playwright install chromium
 RUN playwright install-deps chromium
 
 # 앱 코드 복사
-COPY . .
+COPY backend/app ./app
 
 # 포트 노출
 EXPOSE 8000

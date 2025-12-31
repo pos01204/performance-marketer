@@ -1,0 +1,35 @@
+# Railway에서 무시할 파일/폴더
+# 프론트엔드 관련 파일들 (Vercel에서 배포)
+
+# Frontend files
+src/
+components/
+services/
+store/
+hooks/
+public/
+index.html
+index.css
+App.tsx
+vite.config.ts
+tailwind.config.js
+postcss.config.js
+tsconfig.json
+tsconfig.node.json
+package.json
+package-lock.json
+node_modules/
+
+# Vercel
+vercel.json
+api/
+
+# Docs
+*.md
+!backend/README.md
+
+# Other
+.env
+.env.local
+env.example
+dist/
