@@ -3,8 +3,11 @@ import type { IdusProduct, ProductSearchParams } from '../types';
 // 페이지당 아이템 수
 export const ITEMS_PER_PAGE = 24;
 
-// API 기본 URL (프로덕션에서는 같은 도메인 사용)
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+// Railway 백엔드 API URL (환경변수에서 가져오거나 기본값 사용)
+const CRAWLER_API_URL = import.meta.env.VITE_CRAWLER_API_URL || '';
+
+// Vercel API URL (fallback)
+const VERCEL_API_URL = import.meta.env.VITE_API_URL || '';
 
 /**
  * 작품 검색 결과 타입 (페이지네이션 포함)
@@ -26,21 +29,37 @@ export async function searchProductsWithPagination(params: ProductSearchParams):
     throw new Error('검색어를 입력해주세요');
   }
 
-  // Vercel API 호출 시도
+  const trimmedKeyword = keyword.trim();
+
+  // 1. Railway 백엔드 API 시도 (playwright-stealth 사용)
+  if (CRAWLER_API_URL) {
+    try {
+      const result = await searchViaRailwayApi(trimmedKeyword, sort, page);
+      if (result.products.length > 0) {
+        console.log(`Railway API 성공: ${result.products.length}개 상품`);
+        return result;
+      }
+      console.log('Railway API 결과 없음');
+    } catch (error) {
+      console.error('Railway API 호출 실패:', error);
+    }
+  }
+
+  // 2. Vercel API 시도 (fallback)
   try {
-    const result = await searchViaVercelApi(keyword.trim(), sort, page);
+    const result = await searchViaVercelApi(trimmedKeyword, sort, page);
     if (result.products.length > 0) {
       console.log(`Vercel API 성공: ${result.products.length}개 상품`);
       return result;
     }
-    console.log('Vercel API 결과 없음, Mock 데이터 사용');
+    console.log('Vercel API 결과 없음');
   } catch (error) {
     console.error('Vercel API 호출 실패:', error);
   }
 
-  // API 실패 시 Mock 데이터 반환
-  console.log('Mock 데이터로 대체합니다.');
-  const mockResult = getMockProducts(keyword, page);
+  // 3. 모든 API 실패 시 Mock 데이터
+  console.log('모든 API 실패, Mock 데이터로 대체합니다.');
+  const mockResult = getMockProducts(trimmedKeyword, page);
   return {
     ...mockResult,
     page,
@@ -56,14 +75,14 @@ export async function searchProducts(params: ProductSearchParams): Promise<IdusP
 }
 
 /**
- * Vercel Serverless API를 통한 검색
+ * Railway 백엔드 API를 통한 검색 (playwright-stealth)
  */
-async function searchViaVercelApi(
+async function searchViaRailwayApi(
   keyword: string,
   sort: string = 'popular',
   page: number = 1
 ): Promise<SearchResultWithPagination> {
-  const response = await fetch(`${API_BASE_URL}/api/crawl/search`, {
+  const response = await fetch(`${CRAWLER_API_URL}/api/search`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -78,7 +97,43 @@ async function searchViaVercelApi(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `API 오류: ${response.status}`);
+    throw new Error(errorData.detail || `Railway API 오류: ${response.status}`);
+  }
+
+  const data = await response.json();
+  
+  return {
+    products: data.products || [],
+    hasMore: data.hasMore || (data.products?.length >= ITEMS_PER_PAGE),
+    totalCount: data.total || data.products?.length || 0,
+    page,
+  };
+}
+
+/**
+ * Vercel Serverless API를 통한 검색 (fallback)
+ */
+async function searchViaVercelApi(
+  keyword: string,
+  sort: string = 'popular',
+  page: number = 1
+): Promise<SearchResultWithPagination> {
+  const response = await fetch(`${VERCEL_API_URL}/api/crawl/search`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      keyword,
+      sort,
+      page,
+      size: ITEMS_PER_PAGE,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Vercel API 오류: ${response.status}`);
   }
 
   const data = await response.json();
@@ -267,9 +322,27 @@ export interface ProductDetail extends IdusProduct {
 /**
  * 상품 상세 정보 가져오기
  */
-export async function getProductDetail(productId: string): Promise<ProductDetail | null> {
-  // 현재는 기본 정보만 반환
-  // 추후 상세 API 구현 시 확장 가능
+export async function getProductDetail(url: string): Promise<ProductDetail | null> {
+  // Railway API로 상세 정보 가져오기
+  if (CRAWLER_API_URL) {
+    try {
+      const response = await fetch(`${CRAWLER_API_URL}/api/product/detail`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data as ProductDetail;
+      }
+    } catch (error) {
+      console.error('상품 상세 정보 가져오기 실패:', error);
+    }
+  }
+  
   return null;
 }
 
@@ -284,9 +357,9 @@ export function extractProductIdFromUrl(url: string): string | null {
 /**
  * 여러 상품의 상세 정보 일괄 가져오기
  */
-export async function getMultipleProductDetails(productIds: string[]): Promise<ProductDetail[]> {
+export async function getMultipleProductDetails(urls: string[]): Promise<ProductDetail[]> {
   const details = await Promise.all(
-    productIds.map(id => getProductDetail(id))
+    urls.map(url => getProductDetail(url))
   );
   return details.filter((d): d is ProductDetail => d !== null);
 }
