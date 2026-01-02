@@ -156,6 +156,7 @@ class IdusScraper:
     ) -> Dict[str, Any]:
         """
         idus 내부 API를 직접 호출하여 상품 검색
+        실제 idus가 사용하는 /v2/www-api/search/products/v2 API 사용
         """
         # 정렬 매핑 (API용)
         sort_map = {
@@ -167,8 +168,8 @@ class IdusScraper:
         }
         sort_value = sort_map.get(sort, "POPULAR")
         
-        # idus 검색 API 엔드포인트
-        api_url = "https://www.idus.com/v2/api/aggregator/api/v4/products/search"
+        # idus 실제 검색 API 엔드포인트 (무한 스크롤용)
+        api_url = "https://www.idus.com/v2/www-api/search/products/v2"
         
         headers = {
             "Accept": "application/json, text/plain, */*",
@@ -182,37 +183,66 @@ class IdusScraper:
             "sec-ch-ua-platform": '"Windows"',
         }
         
+        # 실제 idus API 페이로드 형식
         payload = {
             "keyword": keyword,
             "page": page,
             "size": size,
             "sort": sort_value,
+            "filters": {}  # 필터 옵션
         }
         
         async with aiohttp.ClientSession() as session:
             async with session.post(api_url, headers=headers, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as response:
-                print(f"API response status: {response.status}")
+                print(f"Search API response status: {response.status}")
                 
                 if response.status == 200:
                     data = await response.json()
                     products = []
                     
-                    # API 응답에서 상품 추출
-                    raw_products = data.get("products") or data.get("data", {}).get("products") or []
+                    # 다양한 응답 구조 처리
+                    raw_products = (
+                        data.get("products") or 
+                        data.get("data", {}).get("products") or 
+                        data.get("result", {}).get("products") or
+                        data.get("items") or
+                        []
+                    )
                     
-                    for item in raw_products[:size]:
+                    total_count = (
+                        data.get("totalCount") or 
+                        data.get("total") or 
+                        data.get("data", {}).get("totalCount") or
+                        len(raw_products)
+                    )
+                    
+                    print(f"Raw products count: {len(raw_products)}, Total: {total_count}")
+                    
+                    # 응답 구조 로깅 (디버깅용)
+                    if raw_products and len(raw_products) > 0:
+                        sample = raw_products[0]
+                        print(f"Sample product keys: {list(sample.keys()) if isinstance(sample, dict) else 'not a dict'}")
+                        if isinstance(sample, dict):
+                            # 이미지 관련 필드 확인
+                            img_fields = [k for k in sample.keys() if 'image' in k.lower() or 'img' in k.lower() or 'thumb' in k.lower()]
+                            print(f"Image-related fields: {img_fields}")
+                            for field in img_fields:
+                                print(f"  {field}: {sample.get(field)}")
+                    
+                    for item in raw_products:
                         product = self._normalize_api_product(item)
                         if product:
                             products.append(product)
                     
                     # 첫 번째 상품의 이미지 URL 로그
                     if products:
-                        print(f"Sample product image: {products[0].get('image', 'NO IMAGE')}")
+                        print(f"✅ Sample product: {products[0].get('title', 'NO TITLE')[:30]}")
+                        print(f"   Image URL: {products[0].get('image', 'NO IMAGE')}")
                     
                     return {
                         "products": products,
-                        "total": data.get("totalCount") or len(products),
-                        "hasMore": len(products) >= size
+                        "total": total_count,
+                        "hasMore": len(raw_products) >= size
                     }
                 else:
                     text = await response.text()
@@ -224,40 +254,82 @@ class IdusScraper:
         if not item:
             return None
         
-        product_id = item.get("uuid") or item.get("id") or item.get("productId")
+        product_id = item.get("uuid") or item.get("id") or item.get("productId") or item.get("productUuid")
         title = item.get("name") or item.get("title") or item.get("productName")
         
         if not product_id and not title:
             return None
         
-        # 이미지 URL 구성
+        # 이미지 URL 추출 (다양한 필드명 지원)
         image_url = ""
-        image_id = item.get("imageId") or item.get("mainImageId") or item.get("thumbnailImageId")
         
-        if image_id:
-            # idus 이미지 URL 패턴
-            image_url = f"https://image.idus.com/image/files/{image_id}_400.jpg"
-        else:
-            # 직접 URL이 있는 경우
-            image_url = item.get("imageUrl") or item.get("image") or item.get("thumbnailUrl") or item.get("mainImage") or ""
-            
-            # URL 정규화
-            if image_url and not image_url.startswith("http"):
-                if image_url.startswith("//"):
-                    image_url = "https:" + image_url
-                elif image_url.startswith("/"):
-                    image_url = "https://www.idus.com" + image_url
+        # 1. 직접 URL 필드 확인 (우선순위 순)
+        image_url_fields = [
+            "imageUrl", "image", "thumbnailUrl", "mainImage", "mainImageUrl",
+            "thumbUrl", "thumbnail", "productImage", "productImageUrl",
+            "representImage", "representImageUrl", "coverImage", "coverImageUrl"
+        ]
+        
+        for field in image_url_fields:
+            val = item.get(field)
+            if val and isinstance(val, str) and len(val) > 10:
+                image_url = val
+                break
+        
+        # 2. 이미지 ID 필드에서 URL 생성
+        if not image_url:
+            image_id_fields = ["imageId", "mainImageId", "thumbnailImageId", "representImageId"]
+            for field in image_id_fields:
+                image_id = item.get(field)
+                if image_id and isinstance(image_id, str) and len(image_id) > 10:
+                    image_url = f"https://image.idus.com/image/files/{image_id}_400.jpg"
+                    break
+        
+        # 3. 중첩 객체에서 이미지 찾기
+        if not image_url:
+            for key in ["mainImage", "thumbnail", "image", "images"]:
+                nested = item.get(key)
+                if isinstance(nested, dict):
+                    image_url = nested.get("url") or nested.get("imageUrl") or ""
+                    if image_url:
+                        break
+                elif isinstance(nested, list) and len(nested) > 0:
+                    first_img = nested[0]
+                    if isinstance(first_img, str):
+                        image_url = first_img
+                    elif isinstance(first_img, dict):
+                        image_url = first_img.get("url") or first_img.get("imageUrl") or ""
+                    if image_url:
+                        break
+        
+        # URL 정규화
+        if image_url:
+            if image_url.startswith("//"):
+                image_url = "https:" + image_url
+            elif image_url.startswith("/"):
+                image_url = "https://www.idus.com" + image_url
+        
+        # 작가명 추출
+        artist_name = (
+            item.get("artistName") or 
+            item.get("sellerName") or 
+            item.get("artistNickname") or
+            (item.get("artist", {}) or {}).get("name") or
+            (item.get("artist", {}) or {}).get("nickname") or
+            (item.get("seller", {}) or {}).get("name") or
+            "작가"
+        )
         
         return {
             "id": str(product_id or f"product-{hash(title) % 100000}"),
             "title": title or "상품명 없음",
-            "price": item.get("price") or item.get("salePrice") or 0,
+            "price": item.get("price") or item.get("salePrice") or item.get("finalPrice") or 0,
             "originalPrice": item.get("originPrice") or item.get("originalPrice") or item.get("listPrice"),
-            "discountRate": item.get("discountRate") or item.get("discount"),
+            "discountRate": item.get("discountRate") or item.get("discount") or item.get("discountPercent"),
             "image": image_url,
-            "artistName": item.get("artistName") or (item.get("artist", {}) or {}).get("name") or item.get("sellerName") or "작가",
-            "rating": float(item.get("reviewAvg") or item.get("rating") or item.get("score") or 0),
-            "reviewCount": int(item.get("reviewCount") or item.get("reviewCnt") or 0),
+            "artistName": artist_name,
+            "rating": float(item.get("reviewAvg") or item.get("rating") or item.get("score") or item.get("reviewScore") or 0),
+            "reviewCount": int(item.get("reviewCount") or item.get("reviewCnt") or item.get("reviewTotal") or 0),
             "url": f"https://www.idus.com/v2/product/{product_id}",
             "category": item.get("categoryName") or item.get("category"),
         }

@@ -364,17 +364,32 @@ export const ProductDiscovery: React.FC<ProductDiscoveryProps> = ({ onNavigateTo
                 </AnimatePresence>
               </motion.div>
 
-              {/* 무한 스크롤 트리거 */}
-              <div ref={loadMoreRef} className="py-8 flex justify-center">
+              {/* 페이지네이션 / 더 보기 */}
+              <div ref={loadMoreRef} className="py-8 flex flex-col items-center gap-4">
                 {isLoadingMore && (
                   <div className="flex items-center gap-3 text-text-muted">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span>더 불러오는 중...</span>
                   </div>
                 )}
+                
+                {/* 더 보기 버튼 */}
+                {hasMore && !isLoadingMore && (
+                  <button
+                    onClick={loadMore}
+                    className="px-8 py-3 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:border-brand-orange hover:text-brand-orange transition-all shadow-soft flex items-center gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>더 보기</span>
+                    <span className="text-sm text-gray-400">
+                      ({searchResults.length} / {totalCount > 0 ? totalCount : '?'})
+                    </span>
+                  </button>
+                )}
+                
                 {!hasMore && searchResults.length > ITEMS_PER_PAGE && (
                   <div className="text-text-muted text-sm">
-                    모든 검색 결과를 불러왔습니다
+                    모든 검색 결과를 불러왔습니다 ({searchResults.length}개)
                   </div>
                 )}
               </div>
