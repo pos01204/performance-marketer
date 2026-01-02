@@ -55,8 +55,7 @@ class IdusScraper:
         # stealth 모드 적용
         await stealth_async(page)
         
-        # 불필요한 리소스 차단 (속도 향상)
-        await page.route("**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2}", lambda route: route.abort())
+        # 불필요한 리소스만 차단 (이미지는 유지 - URL 추출 필요)
         await page.route("**/google-analytics.com/**", lambda route: route.abort())
         await page.route("**/googletagmanager.com/**", lambda route: route.abort())
         await page.route("**/facebook.com/**", lambda route: route.abort())
@@ -275,65 +274,147 @@ class IdusScraper:
         }
     
     async def _extract_products_from_dom(self, page: Page, size: int) -> List[Dict]:
-        """DOM에서 직접 상품 추출 (fallback)"""
+        """DOM에서 직접 상품 추출 (fallback) - idus v2 검색 페이지 구조"""
         products = []
         
         try:
-            # 상품 카드 요소 찾기
-            items = await page.query_selector_all('[data-product-id], [data-uuid], a[href*="/w/product/"], a[href*="/v2/product/"]')
+            # idus v2 검색 결과의 상품 링크 - href에 /v2/product/ 또는 /w/product/ 포함
+            product_links = await page.evaluate("""
+                () => {
+                    const products = [];
+                    // 모든 상품 링크 찾기
+                    const links = document.querySelectorAll('a[href*="/v2/product/"], a[href*="/w/product/"]');
+                    
+                    for (const link of links) {
+                        try {
+                            const href = link.getAttribute('href') || '';
+                            
+                            // 상품 ID 추출
+                            const match = href.match(/\\/(?:v2|w)\\/product\\/([a-f0-9-]+)/i);
+                            if (!match) continue;
+                            const productId = match[1];
+                            
+                            // 이미 추가된 상품인지 확인
+                            if (products.some(p => p.id === productId)) continue;
+                            
+                            // 이미지 URL 추출
+                            const img = link.querySelector('img');
+                            let imageUrl = '';
+                            if (img) {
+                                imageUrl = img.src || img.dataset.src || img.getAttribute('data-lazy') || '';
+                            }
+                            
+                            // 링크의 전체 텍스트에서 정보 추출
+                            const fullText = link.innerText || link.textContent || '';
+                            
+                            // 가격 추출 (숫자,숫자 원 또는 숫자원 패턴)
+                            const priceMatches = fullText.match(/([0-9,]+)\\s*원/g) || [];
+                            let price = 0;
+                            let originalPrice = null;
+                            
+                            if (priceMatches.length > 0) {
+                                // 첫 번째 가격 (원가 또는 할인가)
+                                const firstPrice = parseInt(priceMatches[0].replace(/[^0-9]/g, '')) || 0;
+                                
+                                if (priceMatches.length >= 2) {
+                                    // 두 번째 가격이 있으면 첫 번째가 원가, 두 번째가 할인가
+                                    originalPrice = firstPrice;
+                                    price = parseInt(priceMatches[1].replace(/[^0-9]/g, '')) || firstPrice;
+                                } else {
+                                    price = firstPrice;
+                                }
+                            }
+                            
+                            // 평점 추출 (4.8, 5.0 등의 패턴)
+                            const ratingMatch = fullText.match(/([0-5]\\.[0-9])\\s*\\(([0-9,]+)\\)/);
+                            const rating = ratingMatch ? parseFloat(ratingMatch[1]) : 0;
+                            const reviewCount = ratingMatch ? parseInt(ratingMatch[2].replace(/,/g, '')) : 0;
+                            
+                            // 할인율 추출
+                            const discountMatch = fullText.match(/([0-9]+)%/);
+                            const discountRate = discountMatch ? parseInt(discountMatch[1]) : null;
+                            
+                            // 텍스트 분석하여 작가명과 상품명 분리
+                            // 패턴: "작가명 상품명 가격원..."
+                            const lines = fullText.split('\\n').map(l => l.trim()).filter(l => l);
+                            
+                            let artistName = '작가';
+                            let title = '';
+                            
+                            // 첫 번째 줄이 작가명인 경우가 많음
+                            if (lines.length >= 2) {
+                                // 첫 번째 줄에 "원"이나 숫자가 많으면 작가명+상품명 혼합
+                                const firstLine = lines[0];
+                                if (!/[0-9,]+\\s*원/.test(firstLine) && firstLine.length < 30) {
+                                    artistName = firstLine;
+                                    // 두 번째 줄부터 상품명 찾기
+                                    for (let i = 1; i < lines.length; i++) {
+                                        if (!/[0-9,]+\\s*원/.test(lines[i]) && !lines[i].includes('%') && lines[i].length > 5) {
+                                            title = lines[i];
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    // 첫 줄에서 분리 시도 (예: "소소페인팅 밤하늘의 펄 물감폰케이스")
+                                    const parts = firstLine.split(/\\s+/);
+                                    if (parts.length >= 2) {
+                                        artistName = parts[0];
+                                        title = parts.slice(1).join(' ');
+                                    }
+                                }
+                            }
+                            
+                            // 상품명이 비어있으면 전체 텍스트에서 추출
+                            if (!title) {
+                                // 가격, 평점 등 제거하고 상품명 추출
+                                title = fullText
+                                    .replace(/[0-9,]+\\s*원/g, '')
+                                    .replace(/[0-9]+%/g, '')
+                                    .replace(/[0-5]\\.[0-9]\\s*\\([0-9,]+\\)/g, '')
+                                    .replace(/멤버십.*할인/g, '')
+                                    .replace(/쿠폰/g, '')
+                                    .replace(/후기.*/g, '')
+                                    .replace(/살수록할인/g, '')
+                                    .trim()
+                                    .split('\\n')[0]
+                                    .trim();
+                                
+                                // 너무 길면 자르기
+                                if (title.length > 100) {
+                                    title = title.substring(0, 100);
+                                }
+                            }
+                            
+                            if (!title || title.length < 2) {
+                                title = `상품 ${products.length + 1}`;
+                            }
+                            
+                            products.push({
+                                id: productId,
+                                title: title,
+                                price: price,
+                                originalPrice: originalPrice,
+                                discountRate: discountRate,
+                                image: imageUrl,
+                                artistName: artistName,
+                                rating: rating,
+                                reviewCount: reviewCount,
+                                url: 'https://www.idus.com/v2/product/' + productId,
+                            });
+                            
+                        } catch (e) {
+                            console.error('Error parsing product:', e);
+                        }
+                    }
+                    
+                    return products;
+                }
+            """)
             
-            for item in items[:size]:
-                try:
-                    # 링크에서 ID 추출
-                    href = await item.get_attribute("href") or ""
-                    product_id = None
-                    
-                    match = re.search(r'/(?:w|v2)/product/([a-f0-9-]+)', href)
-                    if match:
-                        product_id = match.group(1)
-                    else:
-                        product_id = await item.get_attribute("data-product-id") or await item.get_attribute("data-uuid")
-                    
-                    if not product_id:
-                        continue
-                    
-                    # 제목
-                    title_el = await item.query_selector('.product-title, .item-title, h3, [class*="title"]')
-                    title = await title_el.inner_text() if title_el else f"상품 {len(products) + 1}"
-                    
-                    # 가격
-                    price_el = await item.query_selector('.price, .item-price, [class*="price"]')
-                    price_text = await price_el.inner_text() if price_el else "0"
-                    price = int(re.sub(r'[^\d]', '', price_text) or 0)
-                    
-                    # 이미지
-                    img_el = await item.query_selector('img')
-                    image = ""
-                    if img_el:
-                        image = await img_el.get_attribute("src") or await img_el.get_attribute("data-src") or ""
-                    
-                    # 작가명
-                    artist_el = await item.query_selector('.artist-name, .seller-name, [class*="artist"]')
-                    artist_name = await artist_el.inner_text() if artist_el else "작가"
-                    
-                    products.append({
-                        "id": product_id,
-                        "title": title.strip(),
-                        "price": price,
-                        "originalPrice": None,
-                        "discountRate": None,
-                        "image": image,
-                        "artistName": artist_name.strip(),
-                        "rating": 0,
-                        "reviewCount": 0,
-                        "url": f"https://www.idus.com/w/product/{product_id}",
-                        "category": None,
-                    })
-                    
-                except Exception as e:
-                    print(f"Error extracting product from DOM: {e}")
-                    continue
-                    
+            if product_links:
+                print(f"DOM extraction found {len(product_links)} products")
+                products = product_links[:size]
+                
         except Exception as e:
             print(f"DOM extraction error: {e}")
         
