@@ -6,7 +6,8 @@ idus 크롤러 - playwright-stealth 사용
 import asyncio
 import json
 import re
-from typing import Optional, Dict, List, Any
+import aiohttp
+from typing import Optional, Dict, List, Any, Tuple
 from playwright.async_api import async_playwright, Browser, Page
 from playwright_stealth import stealth_async
 
@@ -70,8 +71,19 @@ class IdusScraper:
         size: int = 24
     ) -> Dict[str, Any]:
         """
-        키워드로 상품 검색
+        키워드로 상품 검색 - API 우선, 실패 시 브라우저 크롤링
         """
+        # 1. 먼저 idus API 직접 호출 시도
+        try:
+            api_result = await self._search_via_api(keyword, sort, page, size)
+            if api_result and len(api_result.get("products", [])) > 0:
+                print(f"API method succeeded: {len(api_result['products'])} products")
+                return api_result
+        except Exception as e:
+            print(f"API method failed: {e}")
+        
+        # 2. API 실패 시 브라우저 크롤링
+        print("Falling back to browser crawling...")
         await self.initialize()
         
         # 정렬 매핑
@@ -95,7 +107,24 @@ class IdusScraper:
             await browser_page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
             
             # 상품이 로드될 때까지 대기
-            await browser_page.wait_for_timeout(3000)
+            await browser_page.wait_for_timeout(2000)
+            
+            # 스크롤하여 lazy loading 이미지 트리거
+            await browser_page.evaluate("""
+                async () => {
+                    // 부드럽게 스크롤하여 이미지 로드 트리거
+                    for (let i = 0; i < 3; i++) {
+                        window.scrollBy(0, window.innerHeight);
+                        await new Promise(r => setTimeout(r, 500));
+                    }
+                    // 다시 위로
+                    window.scrollTo(0, 0);
+                    await new Promise(r => setTimeout(r, 500));
+                }
+            """)
+            
+            # 이미지 로드 대기
+            await browser_page.wait_for_timeout(2000)
             
             # __NEXT_DATA__ 또는 __NUXT_DATA__에서 데이터 추출
             products = await self._extract_products_from_page(browser_page, size)
@@ -117,6 +146,121 @@ class IdusScraper:
             raise e
         finally:
             await browser_page.context.close()
+
+    async def _search_via_api(
+        self, 
+        keyword: str, 
+        sort: str = "popular",
+        page: int = 1,
+        size: int = 24
+    ) -> Dict[str, Any]:
+        """
+        idus 내부 API를 직접 호출하여 상품 검색
+        """
+        # 정렬 매핑 (API용)
+        sort_map = {
+            "popular": "POPULAR",
+            "newest": "RECENT",
+            "price_asc": "PRICE_ASC",
+            "price_desc": "PRICE_DESC",
+            "rating": "REVIEW_RATING"
+        }
+        sort_value = sort_map.get(sort, "POPULAR")
+        
+        # idus 검색 API 엔드포인트
+        api_url = "https://www.idus.com/v2/api/aggregator/api/v4/products/search"
+        
+        headers = {
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Content-Type": "application/json",
+            "Origin": "https://www.idus.com",
+            "Referer": f"https://www.idus.com/v2/search?keyword={keyword}",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+        }
+        
+        payload = {
+            "keyword": keyword,
+            "page": page,
+            "size": size,
+            "sort": sort_value,
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(api_url, headers=headers, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                print(f"API response status: {response.status}")
+                
+                if response.status == 200:
+                    data = await response.json()
+                    products = []
+                    
+                    # API 응답에서 상품 추출
+                    raw_products = data.get("products") or data.get("data", {}).get("products") or []
+                    
+                    for item in raw_products[:size]:
+                        product = self._normalize_api_product(item)
+                        if product:
+                            products.append(product)
+                    
+                    # 첫 번째 상품의 이미지 URL 로그
+                    if products:
+                        print(f"Sample product image: {products[0].get('image', 'NO IMAGE')}")
+                    
+                    return {
+                        "products": products,
+                        "total": data.get("totalCount") or len(products),
+                        "hasMore": len(products) >= size
+                    }
+                else:
+                    text = await response.text()
+                    print(f"API error response: {text[:500]}")
+                    raise Exception(f"API returned {response.status}")
+
+    def _normalize_api_product(self, item: dict) -> Optional[Dict]:
+        """API 응답의 상품 데이터 정규화"""
+        if not item:
+            return None
+        
+        product_id = item.get("uuid") or item.get("id") or item.get("productId")
+        title = item.get("name") or item.get("title") or item.get("productName")
+        
+        if not product_id and not title:
+            return None
+        
+        # 이미지 URL 구성
+        image_url = ""
+        image_id = item.get("imageId") or item.get("mainImageId") or item.get("thumbnailImageId")
+        
+        if image_id:
+            # idus 이미지 URL 패턴
+            image_url = f"https://image.idus.com/image/files/{image_id}_400.jpg"
+        else:
+            # 직접 URL이 있는 경우
+            image_url = item.get("imageUrl") or item.get("image") or item.get("thumbnailUrl") or item.get("mainImage") or ""
+            
+            # URL 정규화
+            if image_url and not image_url.startswith("http"):
+                if image_url.startswith("//"):
+                    image_url = "https:" + image_url
+                elif image_url.startswith("/"):
+                    image_url = "https://www.idus.com" + image_url
+        
+        return {
+            "id": str(product_id or f"product-{hash(title) % 100000}"),
+            "title": title or "상품명 없음",
+            "price": item.get("price") or item.get("salePrice") or 0,
+            "originalPrice": item.get("originPrice") or item.get("originalPrice") or item.get("listPrice"),
+            "discountRate": item.get("discountRate") or item.get("discount"),
+            "image": image_url,
+            "artistName": item.get("artistName") or (item.get("artist", {}) or {}).get("name") or item.get("sellerName") or "작가",
+            "rating": float(item.get("reviewAvg") or item.get("rating") or item.get("score") or 0),
+            "reviewCount": int(item.get("reviewCount") or item.get("reviewCnt") or 0),
+            "url": f"https://www.idus.com/v2/product/{product_id}",
+            "category": item.get("categoryName") or item.get("category"),
+        }
     
     async def _extract_products_from_page(self, page: Page, size: int) -> List[Dict]:
         """페이지 데이터에서 상품 추출"""
@@ -221,28 +365,56 @@ class IdusScraper:
         return products
     
     def _parse_nuxt_data(self, data: list, size: int) -> List[Dict]:
-        """__NUXT_DATA__에서 상품 파싱"""
+        """__NUXT_DATA__에서 상품 파싱 (Nuxt3 payload 구조)"""
         products = []
         
         try:
-            if isinstance(data, list):
-                for item in data:
-                    if isinstance(item, list):
-                        for sub_item in item:
-                            if isinstance(sub_item, dict) and "uuid" in sub_item:
-                                product = self._normalize_product(sub_item)
-                                if product:
-                                    products.append(product)
-                                if len(products) >= size:
-                                    return products
-                    elif isinstance(item, dict):
-                        if "products" in item and isinstance(item["products"], list):
-                            for p in item["products"][:size]:
-                                product = self._normalize_product(p)
-                                if product:
-                                    products.append(product)
-                            if products:
+            if not isinstance(data, list):
+                return products
+            
+            # Nuxt3 payload는 flat array로 되어있고 참조 구조를 사용
+            # 먼저 모든 객체를 수집
+            all_objects = []
+            for item in data:
+                if isinstance(item, dict):
+                    all_objects.append(item)
+                elif isinstance(item, list):
+                    for sub in item:
+                        if isinstance(sub, dict):
+                            all_objects.append(sub)
+            
+            # uuid나 productId를 가진 객체 찾기
+            for obj in all_objects:
+                if not isinstance(obj, dict):
+                    continue
+                    
+                # 상품 데이터인지 확인
+                has_uuid = "uuid" in obj
+                has_name = "name" in obj or "productName" in obj
+                has_price = "price" in obj or "salePrice" in obj
+                
+                if (has_uuid or ("id" in obj and isinstance(obj.get("id"), str) and len(obj.get("id", "")) > 10)) and has_name and has_price:
+                    product = self._normalize_product(obj)
+                    if product and product.get("title") and product.get("price"):
+                        # 중복 확인
+                        if not any(p.get("id") == product.get("id") for p in products):
+                            products.append(product)
+                            if len(products) >= size:
                                 return products
+            
+            # products 배열이 있는 객체 찾기
+            for obj in all_objects:
+                if isinstance(obj, dict) and "products" in obj:
+                    prod_list = obj["products"]
+                    if isinstance(prod_list, list):
+                        for p in prod_list:
+                            if isinstance(p, dict):
+                                product = self._normalize_product(p)
+                                if product and not any(existing.get("id") == product.get("id") for existing in products):
+                                    products.append(product)
+                                    if len(products) >= size:
+                                        return products
+                                        
         except Exception as e:
             print(f"Error parsing __NUXT_DATA__: {e}")
         
@@ -259,13 +431,36 @@ class IdusScraper:
         if not product_id and not title:
             return None
         
+        # 이미지 URL 추출 (다양한 필드 확인)
+        image_url = ""
+        image_fields = ["imageUrl", "image", "thumbnailUrl", "mainImage", "thumbUrl", "img", "coverImage"]
+        for field in image_fields:
+            if item.get(field):
+                image_url = item.get(field)
+                break
+        
+        # images 배열에서 첫 번째 이미지
+        if not image_url and item.get("images") and isinstance(item.get("images"), list) and len(item["images"]) > 0:
+            first_img = item["images"][0]
+            if isinstance(first_img, str):
+                image_url = first_img
+            elif isinstance(first_img, dict):
+                image_url = first_img.get("url") or first_img.get("imageUrl") or ""
+        
+        # idus 이미지 URL 정규화
+        if image_url and not image_url.startswith("http"):
+            if image_url.startswith("//"):
+                image_url = "https:" + image_url
+            elif image_url.startswith("/"):
+                image_url = "https://www.idus.com" + image_url
+        
         return {
             "id": str(product_id or f"product-{hash(title) % 100000}"),
             "title": title or "상품명 없음",
             "price": item.get("price") or item.get("salePrice") or 0,
             "originalPrice": item.get("originPrice") or item.get("originalPrice") or item.get("listPrice"),
             "discountRate": item.get("discountRate") or item.get("discount"),
-            "image": item.get("imageUrl") or item.get("image") or item.get("thumbnailUrl") or item.get("mainImage") or "",
+            "image": image_url,
             "artistName": item.get("artistName") or (item.get("artist", {}) or {}).get("name") or item.get("sellerName") or "작가",
             "rating": float(item.get("reviewAvg") or item.get("rating") or item.get("score") or 0),
             "reviewCount": int(item.get("reviewCount") or item.get("reviewCnt") or 0),
@@ -297,11 +492,59 @@ class IdusScraper:
                             // 이미 추가된 상품인지 확인
                             if (products.some(p => p.id === productId)) continue;
                             
-                            // 이미지 URL 추출
+                            // 이미지 URL 추출 (다양한 속성 확인)
                             const img = link.querySelector('img');
                             let imageUrl = '';
                             if (img) {
-                                imageUrl = img.src || img.dataset.src || img.getAttribute('data-lazy') || '';
+                                // 우선순위: src > data-src > srcset > data-lazy > style background
+                                imageUrl = img.src || '';
+                                
+                                // src가 base64나 placeholder면 다른 속성 확인
+                                if (!imageUrl || imageUrl.includes('data:') || imageUrl.includes('placeholder') || imageUrl.length < 20) {
+                                    imageUrl = img.dataset.src || img.getAttribute('data-src') || '';
+                                }
+                                
+                                if (!imageUrl) {
+                                    imageUrl = img.getAttribute('data-lazy') || img.getAttribute('data-original') || '';
+                                }
+                                
+                                // srcset에서 추출
+                                if (!imageUrl && img.srcset) {
+                                    const srcsetParts = img.srcset.split(',')[0];
+                                    if (srcsetParts) {
+                                        imageUrl = srcsetParts.trim().split(' ')[0];
+                                    }
+                                }
+                                
+                                // 배경 이미지 확인
+                                if (!imageUrl) {
+                                    const style = img.style.backgroundImage;
+                                    if (style) {
+                                        const match = style.match(/url\\(['"]?([^'"\\)]+)['"]?\\)/);
+                                        if (match) imageUrl = match[1];
+                                    }
+                                }
+                            }
+                            
+                            // 이미지가 없으면 부모에서 찾기
+                            if (!imageUrl) {
+                                const parentImg = link.closest('div')?.querySelector('img');
+                                if (parentImg) {
+                                    imageUrl = parentImg.src || parentImg.dataset.src || '';
+                                }
+                            }
+                            
+                            // URL 정규화
+                            if (imageUrl) {
+                                if (imageUrl.startsWith('//')) {
+                                    imageUrl = 'https:' + imageUrl;
+                                } else if (imageUrl.startsWith('/')) {
+                                    imageUrl = 'https://www.idus.com' + imageUrl;
+                                }
+                                // base64나 placeholder 제거
+                                if (imageUrl.includes('data:') || imageUrl.includes('placeholder') || imageUrl.length < 30) {
+                                    imageUrl = '';
+                                }
                             }
                             
                             // 링크의 전체 텍스트에서 정보 추출
