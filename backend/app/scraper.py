@@ -156,8 +156,9 @@ class IdusScraper:
     ) -> Dict[str, Any]:
         """
         idus 내부 API를 직접 호출하여 상품 검색
-        실제 idus가 사용하는 /v2/www-api/search/products/v2 API 사용
         """
+        import urllib.parse
+        
         # 정렬 매핑 (API용)
         sort_map = {
             "popular": "POPULAR",
@@ -168,7 +169,10 @@ class IdusScraper:
         }
         sort_value = sort_map.get(sort, "POPULAR")
         
-        # idus 실제 검색 API 엔드포인트 (무한 스크롤용)
+        # URL 인코딩된 키워드
+        encoded_keyword = urllib.parse.quote(keyword)
+        
+        # idus 검색 API 엔드포인트 (실제 브라우저가 사용하는 형식)
         api_url = "https://www.idus.com/v2/www-api/search/products/v2"
         
         headers = {
@@ -176,21 +180,26 @@ class IdusScraper:
             "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
             "Content-Type": "application/json",
             "Origin": "https://www.idus.com",
-            "Referer": f"https://www.idus.com/v2/search?keyword={keyword}",
+            "Referer": f"https://www.idus.com/v2/search?keyword={encoded_keyword}",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
             "sec-ch-ua-mobile": "?0",
             "sec-ch-ua-platform": '"Windows"',
         }
         
-        # 실제 idus API 페이로드 형식
+        # 실제 idus API 페이로드 형식 (브라우저 네트워크 탭에서 확인한 형식)
         payload = {
-            "keyword": keyword,
+            "keyword": keyword,  # 원본 키워드 사용
+            "sort": sort_value,
             "page": page,
             "size": size,
-            "sort": sort_value,
-            "filters": {}  # 필터 옵션
+            "filters": {},
+            "categoryDepth1": None,
+            "categoryDepth2": None,
+            "categoryDepth3": None,
         }
+        
+        print(f"Calling API with keyword: {keyword}")
         
         async with aiohttp.ClientSession() as session:
             async with session.post(api_url, headers=headers, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as response:
@@ -218,23 +227,11 @@ class IdusScraper:
                     
                     print(f"Raw products count: {len(raw_products)}, Total: {total_count}")
                     
-                    # 응답 구조 로깅 (디버깅용)
-                    if raw_products and len(raw_products) > 0:
-                        sample = raw_products[0]
-                        print(f"Sample product keys: {list(sample.keys()) if isinstance(sample, dict) else 'not a dict'}")
-                        if isinstance(sample, dict):
-                            # 이미지 관련 필드 확인
-                            img_fields = [k for k in sample.keys() if 'image' in k.lower() or 'img' in k.lower() or 'thumb' in k.lower()]
-                            print(f"Image-related fields: {img_fields}")
-                            for field in img_fields:
-                                print(f"  {field}: {sample.get(field)}")
-                    
                     for item in raw_products:
                         product = self._normalize_api_product(item)
                         if product:
                             products.append(product)
                     
-                    # 첫 번째 상품의 이미지 URL 로그
                     if products:
                         print(f"✅ Sample product: {products[0].get('title', 'NO TITLE')[:30]}")
                         print(f"   Image URL: {products[0].get('image', 'NO IMAGE')}")
@@ -251,11 +248,17 @@ class IdusScraper:
 
     def _normalize_api_product(self, item: dict) -> Optional[Dict]:
         """API 응답의 상품 데이터 정규화"""
-        if not item:
+        if not item or not isinstance(item, dict):
             return None
         
         product_id = item.get("uuid") or item.get("id") or item.get("productId") or item.get("productUuid")
         title = item.get("name") or item.get("title") or item.get("productName")
+        
+        # product_id와 title 타입 검증
+        if product_id and not isinstance(product_id, str):
+            product_id = str(product_id)
+        if title and not isinstance(title, str):
+            title = str(title)
         
         if not product_id and not title:
             return None
@@ -272,6 +275,7 @@ class IdusScraper:
         
         for field in image_url_fields:
             val = item.get(field)
+            # 타입 체크: 문자열이고 충분히 길어야 함
             if val and isinstance(val, str) and len(val) > 10:
                 image_url = val
                 break
@@ -281,6 +285,7 @@ class IdusScraper:
             image_id_fields = ["imageId", "mainImageId", "thumbnailImageId", "representImageId"]
             for field in image_id_fields:
                 image_id = item.get(field)
+                # 타입 체크: 문자열이어야 함
                 if image_id and isinstance(image_id, str) and len(image_id) > 10:
                     image_url = f"https://image.idus.com/image/files/{image_id}_400.jpg"
                     break
@@ -290,46 +295,71 @@ class IdusScraper:
             for key in ["mainImage", "thumbnail", "image", "images"]:
                 nested = item.get(key)
                 if isinstance(nested, dict):
-                    image_url = nested.get("url") or nested.get("imageUrl") or ""
-                    if image_url:
+                    url_val = nested.get("url") or nested.get("imageUrl")
+                    if url_val and isinstance(url_val, str):
+                        image_url = url_val
                         break
                 elif isinstance(nested, list) and len(nested) > 0:
                     first_img = nested[0]
-                    if isinstance(first_img, str):
+                    if isinstance(first_img, str) and len(first_img) > 10:
                         image_url = first_img
-                    elif isinstance(first_img, dict):
-                        image_url = first_img.get("url") or first_img.get("imageUrl") or ""
-                    if image_url:
                         break
+                    elif isinstance(first_img, dict):
+                        url_val = first_img.get("url") or first_img.get("imageUrl")
+                        if url_val and isinstance(url_val, str):
+                            image_url = url_val
+                            break
         
-        # URL 정규화
-        if image_url:
+        # URL 정규화 (타입 체크 포함)
+        if image_url and isinstance(image_url, str):
             if image_url.startswith("//"):
                 image_url = "https:" + image_url
             elif image_url.startswith("/"):
                 image_url = "https://www.idus.com" + image_url
+        else:
+            image_url = ""
         
         # 작가명 추출
+        artist_obj = item.get("artist") if isinstance(item.get("artist"), dict) else {}
+        seller_obj = item.get("seller") if isinstance(item.get("seller"), dict) else {}
+        
         artist_name = (
             item.get("artistName") or 
             item.get("sellerName") or 
             item.get("artistNickname") or
-            (item.get("artist", {}) or {}).get("name") or
-            (item.get("artist", {}) or {}).get("nickname") or
-            (item.get("seller", {}) or {}).get("name") or
+            artist_obj.get("name") or
+            artist_obj.get("nickname") or
+            seller_obj.get("name") or
             "작가"
         )
         
+        # 숫자 필드 안전하게 추출
+        def safe_float(val, default=0.0):
+            if val is None:
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+        
+        def safe_int(val, default=0):
+            if val is None:
+                return default
+            try:
+                return int(val)
+            except (ValueError, TypeError):
+                return default
+        
         return {
-            "id": str(product_id or f"product-{hash(title) % 100000}"),
-            "title": title or "상품명 없음",
-            "price": item.get("price") or item.get("salePrice") or item.get("finalPrice") or 0,
-            "originalPrice": item.get("originPrice") or item.get("originalPrice") or item.get("listPrice"),
-            "discountRate": item.get("discountRate") or item.get("discount") or item.get("discountPercent"),
+            "id": str(product_id or f"product-{hash(str(title)) % 100000}"),
+            "title": str(title) if title else "상품명 없음",
+            "price": safe_int(item.get("price") or item.get("salePrice") or item.get("finalPrice")),
+            "originalPrice": safe_int(item.get("originPrice") or item.get("originalPrice") or item.get("listPrice")),
+            "discountRate": safe_int(item.get("discountRate") or item.get("discount") or item.get("discountPercent")),
             "image": image_url,
-            "artistName": artist_name,
-            "rating": float(item.get("reviewAvg") or item.get("rating") or item.get("score") or item.get("reviewScore") or 0),
-            "reviewCount": int(item.get("reviewCount") or item.get("reviewCnt") or item.get("reviewTotal") or 0),
+            "artistName": str(artist_name) if artist_name else "작가",
+            "rating": safe_float(item.get("reviewAvg") or item.get("rating") or item.get("score") or item.get("reviewScore")),
+            "reviewCount": safe_int(item.get("reviewCount") or item.get("reviewCnt") or item.get("reviewTotal")),
             "url": f"https://www.idus.com/v2/product/{product_id}",
             "category": item.get("categoryName") or item.get("category"),
         }
@@ -461,11 +491,16 @@ class IdusScraper:
                     continue
                     
                 # 상품 데이터인지 확인
-                has_uuid = "uuid" in obj
-                has_name = "name" in obj or "productName" in obj
+                has_uuid = "uuid" in obj and isinstance(obj.get("uuid"), str)
+                has_name = ("name" in obj and isinstance(obj.get("name"), str)) or \
+                           ("productName" in obj and isinstance(obj.get("productName"), str))
                 has_price = "price" in obj or "salePrice" in obj
                 
-                if (has_uuid or ("id" in obj and isinstance(obj.get("id"), str) and len(obj.get("id", "")) > 10)) and has_name and has_price:
+                # id 필드 체크 (문자열이고 충분히 길어야 함)
+                id_val = obj.get("id")
+                has_valid_id = isinstance(id_val, str) and len(id_val) > 10
+                
+                if (has_uuid or has_valid_id) and has_name and has_price:
                     product = self._normalize_product(obj)
                     if product and product.get("title") and product.get("price"):
                         # 중복 확인
@@ -489,16 +524,24 @@ class IdusScraper:
                                         
         except Exception as e:
             print(f"Error parsing __NUXT_DATA__: {e}")
+            import traceback
+            traceback.print_exc()
         
         return products
     
     def _normalize_product(self, item: dict) -> Optional[Dict]:
-        """상품 데이터 정규화"""
-        if not item:
+        """상품 데이터 정규화 (__NUXT_DATA__ 파싱용)"""
+        if not item or not isinstance(item, dict):
             return None
         
         product_id = item.get("uuid") or item.get("id") or item.get("productId")
         title = item.get("name") or item.get("title") or item.get("productName")
+        
+        # 타입 검증
+        if product_id and not isinstance(product_id, str):
+            product_id = str(product_id)
+        if title and not isinstance(title, str):
+            title = str(title)
         
         if not product_id and not title:
             return None
@@ -507,35 +550,69 @@ class IdusScraper:
         image_url = ""
         image_fields = ["imageUrl", "image", "thumbnailUrl", "mainImage", "thumbUrl", "img", "coverImage"]
         for field in image_fields:
-            if item.get(field):
-                image_url = item.get(field)
+            val = item.get(field)
+            # 타입 체크: 문자열이어야 함
+            if val and isinstance(val, str) and len(val) > 10:
+                image_url = val
                 break
         
         # images 배열에서 첫 번째 이미지
-        if not image_url and item.get("images") and isinstance(item.get("images"), list) and len(item["images"]) > 0:
-            first_img = item["images"][0]
-            if isinstance(first_img, str):
-                image_url = first_img
-            elif isinstance(first_img, dict):
-                image_url = first_img.get("url") or first_img.get("imageUrl") or ""
+        if not image_url:
+            images = item.get("images")
+            if isinstance(images, list) and len(images) > 0:
+                first_img = images[0]
+                if isinstance(first_img, str) and len(first_img) > 10:
+                    image_url = first_img
+                elif isinstance(first_img, dict):
+                    url_val = first_img.get("url") or first_img.get("imageUrl")
+                    if url_val and isinstance(url_val, str):
+                        image_url = url_val
         
-        # idus 이미지 URL 정규화
-        if image_url and not image_url.startswith("http"):
+        # idus 이미지 URL 정규화 (타입 체크 포함)
+        if image_url and isinstance(image_url, str):
             if image_url.startswith("//"):
                 image_url = "https:" + image_url
             elif image_url.startswith("/"):
                 image_url = "https://www.idus.com" + image_url
+        else:
+            image_url = ""
+        
+        # 숫자 필드 안전하게 추출
+        def safe_float(val, default=0.0):
+            if val is None:
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+        
+        def safe_int(val, default=0):
+            if val is None:
+                return default
+            try:
+                return int(val)
+            except (ValueError, TypeError):
+                return default
+        
+        # 작가명 추출
+        artist_obj = item.get("artist") if isinstance(item.get("artist"), dict) else {}
+        artist_name = (
+            item.get("artistName") or 
+            artist_obj.get("name") or 
+            item.get("sellerName") or 
+            "작가"
+        )
         
         return {
-            "id": str(product_id or f"product-{hash(title) % 100000}"),
-            "title": title or "상품명 없음",
-            "price": item.get("price") or item.get("salePrice") or 0,
-            "originalPrice": item.get("originPrice") or item.get("originalPrice") or item.get("listPrice"),
-            "discountRate": item.get("discountRate") or item.get("discount"),
+            "id": str(product_id or f"product-{hash(str(title)) % 100000}"),
+            "title": str(title) if title else "상품명 없음",
+            "price": safe_int(item.get("price") or item.get("salePrice")),
+            "originalPrice": safe_int(item.get("originPrice") or item.get("originalPrice") or item.get("listPrice")),
+            "discountRate": safe_int(item.get("discountRate") or item.get("discount")),
             "image": image_url,
-            "artistName": item.get("artistName") or (item.get("artist", {}) or {}).get("name") or item.get("sellerName") or "작가",
-            "rating": float(item.get("reviewAvg") or item.get("rating") or item.get("score") or 0),
-            "reviewCount": int(item.get("reviewCount") or item.get("reviewCnt") or 0),
+            "artistName": str(artist_name) if artist_name else "작가",
+            "rating": safe_float(item.get("reviewAvg") or item.get("rating") or item.get("score")),
+            "reviewCount": safe_int(item.get("reviewCount") or item.get("reviewCnt")),
             "url": item.get("url") or f"https://www.idus.com/w/product/{product_id}",
             "category": item.get("categoryName") or item.get("category"),
         }

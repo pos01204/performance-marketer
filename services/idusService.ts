@@ -111,12 +111,60 @@ async function searchViaRailwayApi(
 
   const data = await response.json();
   
+  // 상품 데이터 정규화 (이미지 URL 검증 및 수정)
+  const products = (data.products || []).map((p: IdusProduct) => ({
+    ...p,
+    // 이미지 URL이 없거나 잘못된 경우 대체 이미지 사용
+    image: normalizeImageUrl(p.image),
+    // 숫자 필드 안전하게 처리
+    price: typeof p.price === 'number' ? p.price : parseInt(String(p.price)) || 0,
+    rating: typeof p.rating === 'number' ? p.rating : parseFloat(String(p.rating)) || 0,
+    reviewCount: typeof p.reviewCount === 'number' ? p.reviewCount : parseInt(String(p.reviewCount)) || 0,
+  }));
+  
+  // 첫 번째 상품 이미지 URL 로그
+  if (products.length > 0) {
+    console.log('첫 번째 상품 이미지:', products[0].image);
+  }
+  
   return {
-    products: data.products || [],
-    hasMore: data.hasMore || (data.products?.length >= ITEMS_PER_PAGE),
-    totalCount: data.total || data.products?.length || 0,
+    products,
+    hasMore: data.hasMore || (products.length >= ITEMS_PER_PAGE),
+    totalCount: data.total || products.length || 0,
     page,
   };
+}
+
+/**
+ * 이미지 URL 정규화
+ */
+function normalizeImageUrl(url: string | undefined | null): string {
+  if (!url || typeof url !== 'string') {
+    return '';
+  }
+  
+  // 이미 완전한 URL인 경우
+  if (url.startsWith('https://') || url.startsWith('http://')) {
+    return url;
+  }
+  
+  // 프로토콜 없는 URL
+  if (url.startsWith('//')) {
+    return 'https:' + url;
+  }
+  
+  // 상대 경로
+  if (url.startsWith('/')) {
+    return 'https://www.idus.com' + url;
+  }
+  
+  // 기타 - idus 이미지 서버 URL로 가정
+  if (url.length > 20 && !url.includes('/')) {
+    // 이미지 ID로 보이는 경우
+    return `https://image.idus.com/image/files/${url}_400.jpg`;
+  }
+  
+  return url;
 }
 
 /**
